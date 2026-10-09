@@ -1,0 +1,205 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Manrope", "Noto Sans Gujarati", "Shruti", "Nirmala UI", ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-foreground: var(--whatsapp-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 1rem;
+  --background: oklch(0.98 0.018 94);
+  --foreground: oklch(0.2 0.035 292);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.035 292);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.035 292);
+  --primary: oklch(0.3 0.14 292);
+  --primary-foreground: oklch(0.99 0.01 95);
+  --secondary: oklch(0.94 0.035 292);
+  --secondary-foreground: oklch(0.3 0.14 292);
+  --muted: oklch(0.955 0.018 94);
+  --muted-foreground: oklch(0.48 0.035 292);
+  --accent: oklch(0.72 0.16 30);
+  --accent-foreground: oklch(0.99 0.01 95);
+  --destructive: oklch(0.56 0.2 27);
+  --destructive-foreground: oklch(0.98 0 0);
+  --success: oklch(0.55 0.14 150);
+  --success-soft: oklch(0.94 0.05 150);
+  --danger-soft: oklch(0.95 0.04 27);
+  --warning: oklch(0.6 0.14 65);
+  --warning-soft: oklch(0.95 0.06 80);
+  --whatsapp: oklch(0.68 0.17 150);
+  --whatsapp-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.025 292);
+  --input: oklch(0.87 0.03 292);
+  --ring: oklch(0.43 0.15 292);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  body {
+    background-color: var(--color-muted);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+.owner-gate {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--color-muted);
+}
+.gate-panel {
+  width: min(100%, 420px);
+  padding: 32px 28px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px color-mix(in oklab, var(--color-primary) 11%, transparent);
+}
+.gate-mark { display: grid; place-items: center; width: 72px; height: 72px; overflow: hidden; margin: 0 auto 20px; border-radius: 8px; background: oklch(0.99 0.035 96); }
+.gate-mark img { width: 100%; height: 100%; object-fit: contain; }
+.gate-eyebrow { text-align: center; color: var(--color-accent); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; }
+.gate-panel h1 { margin-top: 10px; text-align: center; font-size: 25px; line-height: 1.2; font-weight: 800; color: var(--color-primary); }
+.gate-copy { margin-top: 9px; text-align: center; color: var(--color-muted-foreground); font-size: 14px; line-height: 1.55; }
+.gate-form { margin-top: 24px; }
+.gate-label { display: block; margin-bottom: 6px; color: var(--color-foreground); font-size: 13px; font-weight: 700; }
+
+@utility card { @apply rounded-2xl bg-card p-4 shadow-sm border; }
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 h-12 font-semibold active:scale-[0.98] transition disabled:opacity-50; }
+@utility btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 h-12 font-semibold active:scale-[0.98] transition bg-primary text-primary-foreground; }
+@utility btn-soft { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 h-12 font-semibold active:scale-[0.98] transition bg-secondary text-secondary-foreground; }
+@utility btn-wa { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 h-12 font-semibold active:scale-[0.98] transition bg-whatsapp text-whatsapp-foreground; }
+@utility field { @apply w-full h-12 rounded-xl border bg-card px-3 text-base outline-none focus:ring-2 focus:ring-ring; }
+@utility label { @apply mb-1 block text-sm font-semibold text-muted-foreground; }
+@utility chip { @apply rounded-full px-2.5 py-0.5 text-xs font-bold; }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #18181b !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Reset max-w-md constraint so printed receipt fills the entire sheet of paper */
+  #root,
+  .max-w-md,
+  main,
+  .owner-gate {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Hide interactive application elements */
+  header,
+  nav,
+  aside,
+  button,
+  .no-print,
+  .print-hide,
+  [data-sonner-toaster] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Modal backdrops must not clip, dim, or constrain receipt */
+  .receipt-modal-backdrop {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .receipt-modal-inner {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  /* Full-page printable receipt spanning the entire A4 sheet */
+  .printable-receipt-card {
+    position: static !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 260mm !important;
+    margin: 0 !important;
+    padding: 10mm 12mm !important;
+    border: 2px solid #1e1b4b !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-receipt-card * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

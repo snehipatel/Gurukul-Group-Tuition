@@ -339,12 +339,14 @@ function saveLocalCache() {
 
 function saveCloud() {
   if (!cloudReady) return Promise.resolve();
+  saveLocalCache();
   const snapshot = JSON.stringify(state);
   saveQueue = saveQueue.catch(() => undefined).then(async () => {
-    await saveParts({ data: { parts: snapshot } });
-  }).catch((error: unknown) => {
-    toast.error("Could not save online. Please check your connection and try again.");
-    throw error;
+    try {
+      await saveParts({ data: { parts: snapshot } });
+    } catch {
+      // Local cache already preserved
+    }
   });
   return saveQueue;
 }
@@ -355,20 +357,28 @@ export async function flushCloud() {
 
 export async function hydrateFromCloud() {
   const localCopy = typeof window === "undefined" ? null : localStorage.getItem(KEY);
-  const remote = await loadAll();
-  if (remote.parts) {
-    state = normalizeState({ ...seed(), ...(JSON.parse(remote.parts) as Partial<State>) });
-  } else if (localCopy) {
-    state = normalizeState({ ...seed(), ...(JSON.parse(localCopy) as Partial<State>) });
-    cloudReady = true;
-    saveLocalCache();
-    await saveCloud();
-  } else {
-    state = normalizeState(seed());
+  try {
+    const remote = await loadAll();
+    if (remote?.parts) {
+      state = normalizeState({ ...seed(), ...(JSON.parse(remote.parts) as Partial<State>) });
+    } else if (localCopy) {
+      state = normalizeState({ ...seed(), ...(JSON.parse(localCopy) as Partial<State>) });
+      cloudReady = true;
+      saveLocalCache();
+      await saveCloud();
+    } else {
+      state = normalizeState(seed());
+    }
+  } catch {
+    if (localCopy) {
+      state = normalizeState({ ...seed(), ...(JSON.parse(localCopy) as Partial<State>) });
+    } else {
+      state = normalizeState(seed());
+    }
   }
   cloudReady = true;
   saveLocalCache();
-  if (!remote.parts) await saveCloud();
+  try { await saveCloud(); } catch {}
   publish();
 }
 

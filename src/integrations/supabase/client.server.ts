@@ -38,7 +38,11 @@ interface LocalDb {
 }
 
 function getLocalDbPath() {
-  return path.resolve(process.cwd(), '.local-db.json');
+  const isServerless =
+    Boolean(process.env['VERCEL'] || process.env['AWS_LAMBDA_FUNCTION_NAME']) &&
+    fs.existsSync('/tmp');
+  const baseDir = isServerless ? '/tmp' : process.cwd();
+  return path.resolve(baseDir, '.local-db.json');
 }
 
 function loadLocalDb(): LocalDb {
@@ -135,7 +139,10 @@ function createLocalAdminClient() {
 }
 
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env['SUPABASE_URL'] || process.env['VITE_SUPABASE_URL'];
+  const SUPABASE_URL =
+    process.env['SUPABASE_URL'] ||
+    process.env['VITE_SUPABASE_URL'] ||
+    'https://c--f1990936-3d77-44cd-bf7c-8c12fb5f37a9-prod.lovable.cloud';
   const SUPABASE_SERVICE_ROLE_KEY = process.env['SUPABASE_SERVICE_ROLE_KEY'];
 
   if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {

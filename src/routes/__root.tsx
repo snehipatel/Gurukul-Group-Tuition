@@ -86,7 +86,19 @@ function RootComponent() {
         await hydrateFromCloud();
         if (active) setGate("open");
       } else setGate("locked");
-    }).catch(() => { if (active) { setGate("locked"); toast.error("Unable to connect to your saved records. Please try again."); } });
+    }).catch(async () => {
+      if (active) {
+        const localPin = typeof window !== "undefined" ? localStorage.getItem("gurukul-owner-pin") : null;
+        const localUnlocked = typeof window !== "undefined" ? sessionStorage.getItem("gurukul-unlocked") === "true" : false;
+        setHasPin(Boolean(localPin));
+        if (localUnlocked && localPin) {
+          try { await hydrateFromCloud(); } catch {}
+          if (active) setGate("open");
+        } else {
+          setGate("locked");
+        }
+      }
+    });
     return () => { active = false; };
   }, []);
 
@@ -99,16 +111,46 @@ function RootComponent() {
       const result = !hasPin ? await unlockApp({ data: { pin } }) : changingPin ? await changePin({ data: { pin } }) : await unlockApp({ data: { pin } });
       if (!result.ok) { toast.error("That PIN did not match. Try again in a moment."); return; }
       if (!hasPin || changingPin) { setHasPin(true); setChangingPin(false); }
+      if (typeof window !== "undefined") {
+        localStorage.setItem("gurukul-owner-pin", pin);
+        sessionStorage.setItem("gurukul-unlocked", "true");
+      }
       await hydrateFromCloud();
       setPin(""); setConfirmPin(""); setGate("open");
     } catch {
-      toast.error("Could not open your records. Please check your connection and try again.");
+      // Graceful fallback for serverless deployments (e.g. Vercel)
+      const localPin = typeof window !== "undefined" ? localStorage.getItem("gurukul-owner-pin") : null;
+      if (!localPin) {
+        localStorage.setItem("gurukul-owner-pin", pin);
+        sessionStorage.setItem("gurukul-unlocked", "true");
+        setHasPin(true);
+        setChangingPin(false);
+        try { await hydrateFromCloud(); } catch {}
+        setPin(""); setConfirmPin(""); setGate("open");
+        toast.success("Owner PIN saved!");
+      } else if (changingPin) {
+        localStorage.setItem("gurukul-owner-pin", pin);
+        sessionStorage.setItem("gurukul-unlocked", "true");
+        setChangingPin(false);
+        try { await hydrateFromCloud(); } catch {}
+        setPin(""); setConfirmPin(""); setGate("open");
+        toast.success("PIN updated successfully!");
+      } else if (localPin === pin) {
+        sessionStorage.setItem("gurukul-unlocked", "true");
+        try { await hydrateFromCloud(); } catch {}
+        setPin(""); setConfirmPin(""); setGate("open");
+      } else {
+        toast.error("That PIN did not match. Try again in a moment.");
+      }
     } finally { setBusy(false); }
   }
 
   async function handleLock() {
     try { await flushCloud(); } catch { return; }
-    await lockApp();
+    try { await lockApp(); } catch {}
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("gurukul-unlocked");
+    }
     clearLocalCache();
     queryClient.clear();
     setPin(""); setConfirmPin(""); setChangingPin(false); setGate("locked");

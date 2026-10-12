@@ -158,172 +158,82 @@ export const formatStudentId = (st: { id: string }) => {
   return `GGT-STU-${num}`;
 };
 
-const names: [string, string, string][] = [
-  ["Rahul Patel", "રાહુલ પટેલ", "b1"],
-  ["Aarav Shah", "આરવ શાહ", "b1"],
-  ["Dhruv Patel", "ધ્રુવ પટેલ", "b1"],
-  ["Krish Shah", "ક્રિશ શાહ", "b1"],
-  ["Yash Mehta", "યશ મહેતા", "b1"],
-  ["Priya Desai", "પ્રિયા દેસાઈ", "b2"],
-  ["Isha Joshi", "ઈશા જોશી", "b2"],
-  ["Meet Trivedi", "મીત ત્રિવેદી", "b2"],
-  ["Riya Parmar", "રિયા પરમાર", "b2"],
-  ["Om Rathod", "ઓમ રાઠોડ", "b3"],
-  ["Diya Chauhan", "દિયા ચૌહાણ", "b3"],
-  ["Harsh Vora", "હર્ષ વોરા", "b3"],
-];
-
 const seed = (): State => ({
-  faculty: [
-    { id: "f1", name: "Rakesh Sir", nameGu: "રાકેશ સર", subject: "Mathematics", phone: "9876500001", salaryType: "per_student", ratePerStudent: 1500, salary: 18000, qualification: "M.Sc. Maths, B.Ed", joiningDate: "2024-05-01" },
-    { id: "f2", name: "Amit Sir", nameGu: "અમિત સર", subject: "Science", phone: "9876500002", salaryType: "per_lecture", ratePerLecture: 600, salary: 14400, qualification: "M.Sc. Physics", joiningDate: "2024-06-15" },
-    { id: "f3", name: "Neha Ma'am", nameGu: "નેહા મેડમ", subject: "English", phone: "9876500003", salaryType: "per_student", ratePerStudent: 1200, salary: 12000, qualification: "M.A. English", joiningDate: "2025-01-10" },
-  ],
-  batches: [
-    { id: "b1", name: "10-A", standard: "10th", time: "4:00 PM", days: "Mon–Sat", subjects: "Maths, Science", classroom: "Room 1", capacity: 25 },
-    { id: "b2", name: "10-B", standard: "10th", time: "5:30 PM", days: "Mon–Sat", subjects: "Science, English", classroom: "Room 2", capacity: 25 },
-    { id: "b3", name: "9-A", standard: "9th", time: "7:00 PM", days: "Mon–Fri", subjects: "All Subjects", classroom: "Room 1", capacity: 20 },
-  ],
+  faculty: [],
+  batches: [],
   timetable: [],
-  students: names.map(([name, nameGu, batchId], i) => ({
-    id: "s" + i,
-    name,
-    nameGu,
-    batchId,
-    phone: "98250" + String(10000 + i),
-    parentPhone: "98980" + String(20000 + i),
-    standard: batchId === "b3" ? "9th" : "10th",
-    school: "Shree Vidhyalaya",
-    monthlyFee: batchId === "b3" ? 2000 : 2500,
-    totalFee: batchId === "b3" ? 24000 : 30000,
-    dueDate: "2026-10-15",
-    joined: "2026-06-01",
-  })),
-  attendance: [
-    // September records for 10-A (students s0, s1, s2, s3, s4)
-    { date: "2026-09-02", batchId: "b1", present: ["s0", "s1", "s2", "s3", "s4"], absent: [] },
-    { date: "2026-09-05", batchId: "b1", present: ["s1", "s2", "s3", "s4"], absent: ["s0"] },
-    { date: "2026-09-09", batchId: "b1", present: ["s0", "s1", "s2", "s4"], absent: ["s3"] },
-    { date: "2026-09-12", batchId: "b1", present: ["s0", "s1", "s2", "s3", "s4"], absent: [] },
-    { date: "2026-09-16", batchId: "b1", present: ["s0", "s2", "s3", "s4"], absent: ["s1"] },
-    { date: "2026-09-19", batchId: "b1", present: ["s0", "s1", "s3", "s4"], absent: ["s2"] },
-    { date: "2026-09-23", batchId: "b1", present: ["s1", "s2", "s3", "s4"], absent: ["s0"] },
-    { date: "2026-09-26", batchId: "b1", present: ["s0", "s1", "s2", "s3", "s4"], absent: [] },
-    // October records for 10-A
-    { date: "2026-10-01", batchId: "b1", present: ["s0", "s1", "s2", "s3", "s4"], absent: [] },
-    { date: "2026-10-03", batchId: "b1", present: ["s1", "s2", "s3", "s4"], absent: ["s0"] },
-    { date: "2026-10-05", batchId: "b1", present: ["s0", "s1", "s2", "s3", "s4"], absent: [] },
-    { date: "2026-10-07", batchId: "b1", present: ["s0", "s2", "s3", "s4"], absent: ["s1"] },
-    { date: "2026-10-08", batchId: "b1", present: ["s0", "s1", "s2", "s3", "s4"], absent: [] },
-    { date: "2026-10-09", batchId: "b1", present: ["s0", "s1", "s2", "s3", "s4"], absent: [] },
-  ],
-  facultyAttendance: {
-    // September records
-    "2026-09-02": { f1: "P", f2: "P", f3: "P" },
-    "2026-09-05": { f1: "P", f2: "A", f3: "P" },
-    "2026-09-08": { f1: "P", f2: "P", f3: "P" },
-    "2026-09-11": { f1: "A", f2: "P", f3: "P" },
-    "2026-09-14": { f1: "P", f2: "P", f3: "P" },
-    "2026-09-17": { f1: "P", f2: "P", f3: "P" },
-    "2026-09-20": { f1: "P", f2: "A", f3: "P" },
-    "2026-09-23": { f1: "P", f2: "P", f3: "P" },
-    "2026-09-26": { f1: "P", f2: "P", f3: "A" },
-    // October records
-    "2026-10-01": { f1: "P", f2: "P", f3: "P" },
-    "2026-10-02": { f1: "P", f2: "P", f3: "P" },
-    "2026-10-03": { f1: "P", f2: "A", f3: "P" },
-    "2026-10-04": { f1: "P", f2: "P", f3: "P" },
-    "2026-10-05": { f1: "P", f2: "P", f3: "P" },
-    "2026-10-06": { f1: "P", f2: "P", f3: "P" },
-    "2026-10-07": { f1: "A", f2: "P", f3: "P" },
-    "2026-10-08": { f1: "P", f2: "P", f3: "P" },
-    "2026-10-09": { f1: "P", f2: "P", f3: "P" },
-  },
-  payments: [
-    {
-      id: "p1",
-      receiptNo: 420,
-      receiptNumber: "GGT-2026-00420",
-      studentId: "s1",
-      amount: 3000,
-      method: "Cash",
-      date: today(),
-      month: thisMonth(),
-      purpose: "Monthly Fees",
-      remarks: "October monthly fee installment",
-      previousPaid: 17000,
-      balance: 10000,
-      totalFee: 30000,
-      studentStandard: "10th",
-      batchName: "10-A",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "p2",
-      receiptNo: 421,
-      receiptNumber: "GGT-2026-00421",
-      studentId: "s0",
-      amount: 5000,
-      method: "UPI",
-      date: today(),
-      month: thisMonth(),
-      purpose: "Monthly Fees",
-      remarks: "October Monthly Fees",
-      previousPaid: 20000,
-      balance: 5000,
-      totalFee: 30000,
-      studentStandard: "10th",
-      batchName: "10-A",
-      createdAt: new Date().toISOString(),
-    },
-  ],
-  tests: [
-    { id: "test1", name: "Maths Unit Test 1", subject: "Mathematics", date: today(), batch: "10-A", outOf: 50 },
-    { id: "test2", name: "Science Chapter 4", subject: "Science", date: today(), batch: "10-B", outOf: 40 },
-  ],
-  marks: [
-    { id: "m1", student: "Rahul Patel", test: "Maths Unit Test 1", score: 46, outOf: 50 },
-    { id: "m2", student: "Aarav Shah", test: "Maths Unit Test 1", score: 42, outOf: 50 },
-  ],
-  expenses: [
-    { id: "e1", name: "Premises Rent", amount: 25000, date: today(), method: "UPI", note: "October rent" },
-    { id: "e2", name: "Study Material Printing", amount: 3200, date: today(), method: "Cash", note: "10th class worksheets" },
-  ],
-  feePlans: [
-    { id: "fp1", name: "10th Standard Full Year", amount: 30000, standard: "10th", dueDate: "2026-10-15", note: "Full academic course" },
-    { id: "fp2", name: "9th Standard Full Year", amount: 24000, standard: "9th", dueDate: "2026-10-15", note: "Full academic course" },
-  ],
-  salaries: [
-    { id: "sal1", faculty: "Rakesh Sir", amount: 25000, date: today(), note: "September salary disbursed" },
-  ],
+  students: [],
+  attendance: [],
+  facultyAttendance: {},
+  payments: [],
+  tests: [],
+  marks: [],
+  expenses: [],
+  feePlans: [],
+  salaries: [],
   settings: {
     name: "Gurukul Group Tuition",
     address: "Opp. City Center, Ahmedabad, Gujarat - 380015",
     phone: "9876543210",
     waTemplate: "*Gurukul Group Tuition*\nToday's Absentees — {DATE}\nBatch: {BATCH}\n\n{ABSENT_STUDENTS}\n\nTotal absent: {ABSENT_COUNT}",
   },
-  nextReceipt: 422,
+  nextReceipt: 101,
 });
 
-function normalizeState(s: State): State {
+function cleanDummyData(s: Partial<State>): Partial<State> {
+  const dummyStudentIds = new Set(["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11"]);
+  const dummyFacultyIds = new Set(["f1", "f2", "f3"]);
+  const dummyBatchIds = new Set(["b1", "b2", "b3"]);
+  const dummyPaymentIds = new Set(["p1", "p2"]);
+  const dummyTestIds = new Set(["test1", "test2"]);
+  const dummyMarkIds = new Set(["m1", "m2"]);
+  const dummyExpenseIds = new Set(["e1", "e2"]);
+  const dummyPlanIds = new Set(["fp1", "fp2"]);
+  const dummySalaryIds = new Set(["sal1"]);
+
   return {
     ...s,
-    students: (s.students || []).map((st) => ({
+    students: (s.students || []).filter((st) => !dummyStudentIds.has(st.id) && st.name !== "Rahul Patel"),
+    faculty: (s.faculty || []).filter((f) => !dummyFacultyIds.has(f.id) && f.name !== "Rakesh Sir" && f.name !== "Amit Sir" && f.name !== "Neha Ma'am"),
+    batches: (s.batches || []).filter((b) => !dummyBatchIds.has(b.id)),
+    payments: (s.payments || []).filter((p) => !dummyPaymentIds.has(p.id)),
+    attendance: (s.attendance || []).filter((a) => !dummyBatchIds.has(a.batchId)),
+    facultyAttendance: Object.fromEntries(
+      Object.entries(s.facultyAttendance || {}).map(([date, rec]) => [
+        date,
+        Object.fromEntries(Object.entries(rec).filter(([fId]) => !dummyFacultyIds.has(fId))),
+      ]).filter(([, rec]) => Object.keys(rec).length > 0)
+    ),
+    tests: (s.tests || []).filter((t) => !dummyTestIds.has(t.id)),
+    marks: (s.marks || []).filter((m) => !dummyMarkIds.has(m.id)),
+    expenses: (s.expenses || []).filter((e) => !dummyExpenseIds.has(e.id)),
+    feePlans: (s.feePlans || []).filter((fp) => !dummyPlanIds.has(fp.id)),
+    salaries: (s.salaries || []).filter((sal) => !dummySalaryIds.has(sal.id)),
+  };
+}
+
+function normalizeState(s: State): State {
+  const cleaned = cleanDummyData(s);
+  return {
+    ...seed(),
+    ...cleaned,
+    students: (cleaned.students || []).map((st) => ({
       ...st,
       nameGu: st.nameGu || toGujaratiName(st.name),
     })),
-    faculty: (s.faculty || []).map((f) => ({
+    faculty: (cleaned.faculty || []).map((f) => ({
       ...f,
       nameGu: f.nameGu || toGujaratiName(f.name),
     })),
   };
 }
 
-const KEY = "gurukul-v1";
+const KEY = "gurukul-v2";
 const serverState = normalizeState(seed());
 let state: State = serverState;
 if (typeof window !== "undefined") {
   try {
+    localStorage.removeItem("gurukul-v1");
     const raw = localStorage.getItem(KEY);
     state = raw ? normalizeState({ ...seed(), ...JSON.parse(raw) }) : normalizeState(seed());
   } catch { state = normalizeState(seed()); }

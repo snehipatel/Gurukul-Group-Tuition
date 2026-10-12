@@ -885,6 +885,18 @@ function Attendance() {
                 </article>
               );
             })}
+
+            {!activeFaculty.length && (
+              <div className="card py-12 text-center text-muted-foreground">
+                <Users className="size-8 mx-auto mb-2 opacity-50" />
+                <p className="font-bold">{isGu ? "કોઈ શિક્ષક મળ્યા નથી" : "No faculty members found"}</p>
+                <p className="text-xs mt-1">
+                  {isGu
+                    ? "નવા શિક્ષક ઉમેરવા માટે ઉપર 'શિક્ષક ઉમેરો' બટન દબાવો."
+                    : "Click 'Add Faculty' above to add your first teacher."}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

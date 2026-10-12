@@ -15,11 +15,15 @@ import {
   User,
   GraduationCap,
   Building,
+  KeyRound,
+  LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { AppShell, Sheet } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useLanguage, toGujaratiName, getStudentDisplayName } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth-context";
 import {
   useStore,
   update,
@@ -710,11 +714,95 @@ function RecordsTab() {
 // 5. SETTINGS TAB
 // ----------------------------------------------------
 function SettingsTab() {
+  const { lang } = useLanguage();
+  const isGu = lang === "gu";
+  const { lockApp, updatePin } = useAuth();
   const s = useStore();
   const [form, setForm] = useState(s.settings);
+  const [changePinOpen, setChangePinOpen] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinSubmitting, setPinSubmitting] = useState(false);
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
+
+  async function handleSavePin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{4,8}$/.test(newPin)) {
+      toast.error(isGu ? "પિન ૪ થી ૮ અંકોનો હોવો જોઈએ." : "PIN must be 4 to 8 digits.");
+      return;
+    }
+    if (newPin !== confirmPin) {
+      toast.error(isGu ? "પિન મેળ ખાતા નથી." : "PINs do not match.");
+      return;
+    }
+    setPinSubmitting(true);
+    try {
+      const res = await updatePin(newPin);
+      if (res.ok) {
+        toast.success(isGu ? "ઓનર પિન સફળતાપૂર્વક બદલાઈ ગયો!" : "Owner PIN updated successfully!");
+        setNewPin("");
+        setConfirmPin("");
+        setChangePinOpen(false);
+      } else {
+        toast.error(res.message || (isGu ? "પિન બદલવામાં ભૂલ આવી." : "Failed to update PIN."));
+      }
+    } catch {
+      toast.error(isGu ? "પિન બદલવામાં ભૂલ આવી." : "Failed to update PIN.");
+    } finally {
+      setPinSubmitting(false);
+    }
+  }
+
+  async function handleConfirmLock() {
+    toast.info(isGu ? "પોર્ટલ લોક થઈ રહ્યું છે..." : "Locking portal...");
+    await lockApp();
+  }
 
   return (
     <section className="space-y-4">
+      {/* Security & Owner Access */}
+      <div className="card space-y-3 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm">
+        <div className="flex items-center justify-between border-b pb-2">
+          <div>
+            <h3 className="font-extrabold text-foreground text-sm flex items-center gap-2">
+              <ShieldCheck className="size-4 text-primary" />
+              {isGu ? "સુરક્ષા અને ઓનર પિન" : "Security & Owner Access"}
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {isGu
+                ? "ઓનર પિન સુરક્ષા, પિન બદલો અથવા પોર્ટલ લોક / લોગ આઉટ કરો."
+                : "Owner PIN security, change passcode or lock/logout the portal."}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 font-bold text-xs flex items-center justify-center gap-2 border-primary/20 hover:border-primary/40 hover:bg-primary/5 text-foreground shadow-sm"
+            onClick={() => {
+              setNewPin("");
+              setConfirmPin("");
+              setChangePinOpen(true);
+            }}
+          >
+            <KeyRound className="size-4 text-primary" />
+            {isGu ? "ઓનર પિન બદલો" : "Change Owner PIN"}
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 font-bold text-xs flex items-center justify-center gap-2 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 shadow-sm"
+            onClick={() => setLockConfirmOpen(true)}
+          >
+            <LogOut className="size-4 text-destructive" />
+            {isGu ? "લોગ આઉટ / લોક કરો" : "Lock App / Log Out"}
+          </Button>
+        </div>
+      </div>
+
       <div className="card space-y-3">
         <h3 className="font-extrabold text-foreground text-sm border-b pb-2">
           Gurukul Institute Profile (On Receipts)
@@ -788,6 +876,88 @@ function SettingsTab() {
       >
         Save Settings
       </Button>
+
+      {/* Change PIN Sheet */}
+      <Sheet
+        open={changePinOpen}
+        onClose={() => setChangePinOpen(false)}
+        title={isGu ? "ઓનર પિન બદલો" : "Change Owner PIN"}
+      >
+        <form onSubmit={handleSavePin} className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            {isGu
+              ? "તમારા વિદ્યાર્થીઓ અને ફી રેકોર્ડ્સને સુરક્ષિત રાખવા માટે ૪ થી ૮ અંકોનો નવો પિન દાખલ કરો."
+              : "Enter a new 4 to 8 digit number to keep your student and fee records private."}
+          </p>
+
+          <div>
+            <label className="label">{isGu ? "નવો પિન" : "New PIN"}</label>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4,8}"
+              maxLength={8}
+              minLength={4}
+              required
+              className="field text-center text-2xl font-bold tracking-[0.3em]"
+              placeholder="••••"
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+            />
+          </div>
+
+          <div>
+            <label className="label">{isGu ? "કન્ફર્મ પિન" : "Confirm PIN"}</label>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4,8}"
+              maxLength={8}
+              minLength={4}
+              required
+              className="field text-center text-2xl font-bold tracking-[0.3em]"
+              placeholder="••••"
+              value={confirmPin}
+              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => setChangePinOpen(false)}
+            >
+              {isGu ? "રદ કરો" : "Cancel"}
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1 font-bold"
+              disabled={pinSubmitting}
+            >
+              {pinSubmitting
+                ? (isGu ? "સાચવી રહ્યું છે…" : "Saving…")
+                : (isGu ? "પિન સાચવો" : "Save New PIN")}
+            </Button>
+          </div>
+        </form>
+      </Sheet>
+
+      {/* Lock Confirmation Dialog */}
+      <ConfirmDialog
+        open={lockConfirmOpen}
+        onClose={() => setLockConfirmOpen(false)}
+        title={isGu ? "પોર્ટલ લોક / લોગ આઉટ કરો?" : "Lock App / Log Out?"}
+        description={
+          isGu
+            ? "તમારું સેશન લોક થઈ જશે. ફરીથી ખોલવા માટે તમારે તમારો ઓનર પિન દાખલ કરવો પડશે."
+            : "Your session will be locked. You will need to enter your owner PIN to reopen the portal."
+        }
+        confirmLabel={isGu ? "લોક કરો" : "Lock App"}
+        variant="destructive"
+        onConfirm={handleConfirmLock}
+      />
     </section>
   );
 }

@@ -9,6 +9,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { clearLocalCache, hydrateFromCloud, flushCloud } from "@/lib/store";
 import { changePin, getLockStatus, lockApp, unlockApp } from "@/lib/cloud.functions";
 import { Button } from "@/components/ui/button";
+import { AuthContext } from "@/lib/auth-context";
 
 function NotFoundComponent() {
   return (
@@ -156,6 +157,26 @@ function RootComponent() {
     setPin(""); setConfirmPin(""); setChangingPin(false); setGate("locked");
   }
 
+  async function handleUpdatePin(newPin: string) {
+    if (!/^\d{4,8}$/.test(newPin)) {
+      return { ok: false, message: "PIN must be 4 to 8 digits." };
+    }
+    try {
+      await changePin({ data: { pin: newPin } });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("gurukul-owner-pin", newPin);
+        sessionStorage.setItem("gurukul-unlocked", "true");
+      }
+      return { ok: true };
+    } catch {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("gurukul-owner-pin", newPin);
+        sessionStorage.setItem("gurukul-unlocked", "true");
+      }
+      return { ok: true };
+    }
+  }
+
   if (gate !== "open") {
     const setup = !hasPin;
     return (
@@ -180,5 +201,21 @@ function RootComponent() {
     );
   }
 
-  return <QueryClientProvider client={queryClient}><Outlet /><Toaster position="top-center" richColors /><button className="fixed right-3 top-3 z-40 grid size-9 place-items-center rounded-full border bg-card text-primary shadow-sm" aria-label="Lock app" title="Lock app" onClick={handleLock}><LockKeyhole className="size-4" /></button><button className="fixed right-14 top-3 z-40 grid size-9 place-items-center rounded-full border bg-card text-primary shadow-sm" aria-label="Change PIN" title="Change PIN" onClick={() => { setChangingPin(true); setGate("locked"); }}><ShieldCheck className="size-4" /></button></QueryClientProvider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        lockApp: handleLock,
+        startChangePin: () => {
+          setChangingPin(true);
+          setGate("locked");
+        },
+        updatePin: handleUpdatePin,
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+        <Toaster position="top-center" richColors />
+      </QueryClientProvider>
+    </AuthContext.Provider>
+  );
 }

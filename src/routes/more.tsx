@@ -97,57 +97,40 @@ function More() {
 // 2. BATCH CRUD
 // ----------------------------------------------------
 function BatchesTab() {
+  const { lang } = useLanguage();
+  const isGu = lang === "gu";
   const s = useStore();
   const [editing, setEditing] = useState<Batch | null>(null);
   const [open, setOpen] = useState(false);
+  const [standard, setStandard] = useState("");
   const [archiveTarget, setArchiveTarget] = useState<Batch | null>(null);
-
-  const empty = {
-    name: "",
-    standard: "10th",
-    time: "4:00 PM",
-    days: "Mon–Sat",
-    subjects: "",
-    classroom: "Room 1",
-    capacity: "25",
-  };
-  const [form, setForm] = useState(empty);
+  const [deleteTarget, setDeleteTarget] = useState<Batch | null>(null);
 
   function startAdd() {
     setEditing(null);
-    setForm(empty);
+    setStandard("");
     setOpen(true);
   }
 
   function startEdit(b: Batch) {
     setEditing(b);
-    setForm({
-      name: b.name,
-      standard: b.standard,
-      time: b.time,
-      days: b.days,
-      subjects: b.subjects || "",
-      classroom: b.classroom || "Room 1",
-      capacity: String(b.capacity || 25),
-    });
+    setStandard(b.standard || b.name);
     setOpen(true);
   }
 
   function save() {
-    if (!form.name.trim()) {
-      toast.error("Please enter a batch name (e.g. 10-A).");
+    const trimmed = standard.trim();
+    if (!trimmed) {
+      toast.error(isGu ? "કૃપા કરીને ધોરણ દાખલ કરો (દા.ત. 10th)." : "Please enter standard (e.g. 10th).");
       return;
     }
 
     const item: Batch = {
       id: editing?.id ?? uid(),
-      name: form.name.trim(),
-      standard: form.standard.trim(),
-      time: form.time.trim(),
-      days: form.days.trim(),
-      subjects: form.subjects.trim(),
-      classroom: form.classroom.trim(),
-      capacity: Number(form.capacity) || 25,
+      name: trimmed,
+      standard: trimmed,
+      time: editing?.time || "",
+      days: editing?.days || "",
       ...(editing?.archived ? { archived: true } : {}),
     };
 
@@ -158,9 +141,14 @@ function BatchesTab() {
         : [...state.batches, item],
     }));
 
-    toast.success(editing ? `Batch ${item.name} updated` : `Batch ${item.name} added`);
+    toast.success(
+      editing
+        ? (isGu ? `ધોરણ ${item.standard} અપડેટ થયું` : `Batch ${item.standard} updated`)
+        : (isGu ? `ધોરણ ${item.standard} ઉમેરાયું` : `Batch ${item.standard} added`)
+    );
     setOpen(false);
     setEditing(null);
+    setStandard("");
   }
 
   function handleArchiveConfirm() {
@@ -174,10 +162,25 @@ function BatchesTab() {
     }));
     toast.success(
       target.archived
-        ? `Batch ${target.name} restored`
-        : `Batch ${target.name} archived`
+        ? (isGu ? `બેચ ${target.name} પુનઃસ્થાપિત કરી` : `Batch ${target.name} restored`)
+        : (isGu ? `બેચ ${target.name} આર્કાઇવ કરી` : `Batch ${target.name} archived`)
     );
     setArchiveTarget(null);
+  }
+
+  function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    update((state) => ({
+      ...state,
+      batches: state.batches.filter((entry) => entry.id !== target.id),
+    }));
+    toast.success(
+      isGu
+        ? `બેચ ${target.name} કાયમી કાઢી નાખવામાં આવી`
+        : `Batch ${target.name} deleted permanently`
+    );
+    setDeleteTarget(null);
   }
 
   return (
@@ -185,14 +188,14 @@ function BatchesTab() {
       <div className="flex items-center justify-between px-1">
         <div>
           <h2 className="font-extrabold text-foreground text-sm">
-            Batches & Classes
+            {isGu ? "બેચ અને ધોરણ" : "Batches & Standards"}
           </h2>
           <p className="text-xs text-muted-foreground">
-            Manage standards, timings and classrooms
+            {isGu ? "ધોરણ અને ક્લાસ મેનેજ કરો" : "Manage academic standards & classes"}
           </p>
         </div>
-        <Button size="sm" onClick={startAdd} className="h-8 gap-1 text-xs font-bold">
-          <Plus className="size-3.5" /> Add Batch
+        <Button size="sm" onClick={startAdd} className="h-8 gap-1 text-xs font-bold shadow-2xs">
+          <Plus className="size-3.5" /> {isGu ? "નવી બેચ" : "Add Batch"}
         </Button>
       </div>
 
@@ -209,161 +212,192 @@ function BatchesTab() {
                 batch.archived ? "opacity-75 bg-muted/40" : ""
               }`}
             >
-              <div className="rounded-2xl bg-secondary px-3 py-2 text-center text-xs font-black text-primary shrink-0">
-                {batch.time || "—"}
+              <div className="rounded-2xl bg-primary/10 border border-primary/20 px-3.5 py-2 text-center text-xs font-black text-primary shrink-0">
+                {batch.standard}
               </div>
 
               <div className="min-w-0 flex-1">
                 <p className="font-extrabold text-foreground text-sm">
-                  Batch {batch.name} · {batch.standard}
+                  {isGu ? "ધોરણ" : "Standard"} {batch.standard}
                   {batch.archived && (
                     <span className="text-[10px] text-muted-foreground ml-1.5 font-bold">
-                      (Archived)
+                      ({isGu ? "આર્કાઇવ" : "Archived"})
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {batch.days}
-                  {batch.subjects ? ` · ${batch.subjects}` : ""}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {studentCount} students enrolled
-                  {batch.classroom ? ` · ${batch.classroom}` : ""}
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {studentCount} {isGu ? "વિદ્યાર્થીઓ જોડાયેલા છે" : "students enrolled"}
                 </p>
               </div>
 
-              <Button
-                size="icon"
-                variant="ghost"
-                className="size-8"
-                onClick={() => startEdit(batch)}
-                aria-label="Edit batch"
-              >
-                <Pencil className="size-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => startEdit(batch)}
+                  aria-label="Edit batch"
+                  title={isGu ? "સંપાદિત કરો" : "Edit batch"}
+                >
+                  <Pencil className="size-4" />
+                </Button>
 
-              <Button
-                size="icon"
-                variant="ghost"
-                className="size-8 text-destructive hover:bg-destructive/10"
-                onClick={() => setArchiveTarget(batch)}
-                aria-label="Archive batch"
-              >
-                {batch.archived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
-              </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-8 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                  onClick={() => setArchiveTarget(batch)}
+                  aria-label={batch.archived ? "Restore batch" : "Archive batch"}
+                  title={
+                    batch.archived
+                      ? (isGu ? "પુનઃસ્થાપિત કરો" : "Restore batch")
+                      : (isGu ? "આર્કાઇવ કરો" : "Archive batch")
+                  }
+                >
+                  {batch.archived ? (
+                    <ArchiveRestore className="size-4" />
+                  ) : (
+                    <Archive className="size-4" />
+                  )}
+                </Button>
+
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-8 text-destructive hover:bg-destructive/10"
+                  onClick={() => setDeleteTarget(batch)}
+                  aria-label="Delete batch"
+                  title={isGu ? "કાયમી કાઢી નાખો" : "Delete batch permanently"}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
             </article>
           );
         })}
+
+        {!s.batches.length && (
+          <div className="card py-12 text-center text-muted-foreground">
+            <GraduationCap className="size-8 mx-auto mb-2 opacity-50" />
+            <p className="font-bold">{isGu ? "કોઈ બેચ મળ્યા નથી" : "No batches found"}</p>
+            <p className="text-xs mt-1">
+              {isGu
+                ? "નવો બેચ ઉમેરવા માટે ઉપર 'નવી બેચ' બટન દબાવો."
+                : "Click 'Add Batch' above to create your first standard."}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Add / Edit Sheet */}
+      {/* Add / Edit Sheet (ONLY Standard) */}
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
-        title={editing ? `Edit Batch ${editing.name}` : "Add New Batch"}
+        title={
+          editing
+            ? (isGu ? `બેચ સંપાદિત કરો: ${editing.standard}` : `Edit Batch: ${editing.standard}`)
+            : (isGu ? "નવી બેચ ઉમેરો" : "Add New Batch")
+        }
       >
-        <div className="space-y-3 pb-6">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="label">Batch Name *</label>
-              <input
-                className="field font-bold"
-                placeholder="e.g. 10-A"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">Standard</label>
-              <input
-                className="field"
-                placeholder="e.g. 10th"
-                value={form.standard}
-                onChange={(e) => setForm({ ...form, standard: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="label">Time</label>
-              <input
-                className="field"
-                placeholder="e.g. 4:00 PM"
-                value={form.time}
-                onChange={(e) => setForm({ ...form, time: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">Days Schedule</label>
-              <input
-                className="field"
-                placeholder="e.g. Mon–Sat"
-                value={form.days}
-                onChange={(e) => setForm({ ...form, days: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="label">Classroom / Room</label>
-              <input
-                className="field"
-                placeholder="e.g. Room 1"
-                value={form.classroom}
-                onChange={(e) => setForm({ ...form, classroom: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">Capacity</label>
-              <input
-                className="field"
-                inputMode="numeric"
-                value={form.capacity}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    capacity: e.target.value.replace(/\D/g, ""),
-                  })
-                }
-              />
-            </div>
-          </div>
-
+        <div className="space-y-4 pb-6">
           <div>
-            <label className="label">Subjects</label>
+            <label className="label">{isGu ? "ધોરણ (Standard) *" : "Standard *"}</label>
             <input
-              className="field"
-              placeholder="e.g. Mathematics, Science"
-              value={form.subjects}
-              onChange={(e) => setForm({ ...form, subjects: e.target.value })}
+              className="field font-bold text-base"
+              placeholder={isGu ? "દા.ત. 10th અથવા 12th Science" : "e.g. 10th, 9th, 12th Science"}
+              value={standard}
+              onChange={(e) => setStandard(e.target.value)}
+              autoFocus
             />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              {isGu
+                ? "ઝડપી પસંદગી માટે નીચેના ધોરણ પર ક્લિક કરો:"
+                : "Quick select standard:"}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {[
+                "8th",
+                "9th",
+                "10th",
+                "11th Science",
+                "11th Commerce",
+                "11th Arts",
+                "12th Science",
+                "12th Commerce",
+                "12th Arts",
+              ].map((std) => (
+                <button
+                  key={std}
+                  type="button"
+                  className={`chip border text-[11px] font-bold transition ${
+                    standard === std
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 hover:bg-muted text-foreground"
+                  }`}
+                  onClick={() => setStandard(std)}
+                >
+                  {std}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <Button className="w-full h-12 text-base font-bold" onClick={save}>
-            {editing ? "Save Batch Changes" : "Add Batch"}
+          <Button className="w-full h-12 text-base font-bold shadow-md" onClick={save}>
+            {editing
+              ? (isGu ? "સાચવો" : "Save Changes")
+              : (isGu ? "બેચ ઉમેરો" : "Add Batch")}
           </Button>
         </div>
       </Sheet>
 
-      {/* Confirm Dialog */}
+      {/* Archive / Restore Confirm Dialog */}
       <ConfirmDialog
         open={!!archiveTarget}
-        onOpenChange={(op) => !op && setArchiveTarget(null)}
+        onClose={() => setArchiveTarget(null)}
         title={
           archiveTarget?.archived
-            ? `Restore Batch ${archiveTarget?.name}?`
-            : `Archive Batch ${archiveTarget?.name}?`
+            ? (isGu
+                ? `બેચ ${archiveTarget?.name} પુનઃસ્થાપિત કરો?`
+                : `Restore Batch ${archiveTarget?.name}?`)
+            : (isGu
+                ? `બેચ ${archiveTarget?.name} આર્કાઇવ કરો?`
+                : `Archive Batch ${archiveTarget?.name}?`)
         }
         description={
           archiveTarget?.archived
-            ? `This batch will be restored to active schedules.`
-            : `Batch ${archiveTarget?.name} will be archived. All student histories associated with it will remain intact.`
+            ? (isGu
+                ? "આ બેચ ફરીથી સક્રિય લિસ્ટમાં દેખાશે."
+                : "This batch will be restored to active schedules.")
+            : (isGu
+                ? `બેચ ${archiveTarget?.name} આર્કાઇવ થશે. વિદ્યાર્થીઓનો રેકોર્ડ સુરક્ષિત રહેશે.`
+                : `Batch ${archiveTarget?.name} will be archived. All student records will remain intact.`)
         }
-        confirmLabel={archiveTarget?.archived ? "Restore Batch" : "Archive Batch"}
+        confirmLabel={
+          archiveTarget?.archived
+            ? (isGu ? "પુનઃસ્થાપિત કરો" : "Restore Batch")
+            : (isGu ? "આર્કાઇવ કરો" : "Archive Batch")
+        }
         variant={archiveTarget?.archived ? "default" : "destructive"}
         onConfirm={handleArchiveConfirm}
+      />
+
+      {/* Permanent Delete Confirm Dialog */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          isGu
+            ? `બેચ ${deleteTarget?.name} કાયમી કાઢી નાખો?`
+            : `Delete Batch ${deleteTarget?.name}?`
+        }
+        description={
+          isGu
+            ? `શું તમે ખરેખર બેચ ${deleteTarget?.name} કાયમી કાઢી નાખવા માંગો છો? આ ક્રિયા પૂર્વવત્ કરી શકાશે નહીં.`
+            : `Are you sure you want to permanently delete batch ${deleteTarget?.name}? This action cannot be undone.`
+        }
+        confirmLabel={isGu ? "કાયમી કાઢી નાખો" : "Delete Batch Permanently"}
+        variant="destructive"
+        onConfirm={handleDeleteConfirm}
       />
     </section>
   );

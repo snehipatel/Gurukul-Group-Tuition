@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, ArchiveRestore, UserPlus, IndianRupee } from "lucide-react";
 import { AppShell, Sheet } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   rupee,
   formatStudentId,
   type Student,
+  type Batch,
 } from "@/lib/store";
 import { toast } from "sonner";
 
@@ -42,6 +43,31 @@ function Students() {
   const [batch, setBatch] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [addBatchOpen, setAddBatchOpen] = useState(false);
+  const [newBatchStandard, setNewBatchStandard] = useState("");
+
+  function saveNewBatch() {
+    const trimmed = newBatchStandard.trim();
+    if (!trimmed) {
+      toast.error(isGu ? "કૃપા કરીને ધોરણ દાખલ કરો (દા.ત. 10th)." : "Please enter standard (e.g. 10th).");
+      return;
+    }
+    const newBatchItem: Batch = {
+      id: uid(),
+      name: trimmed,
+      standard: trimmed,
+      time: "",
+      days: "",
+    };
+    update((state) => ({
+      ...state,
+      batches: [...state.batches, newBatchItem],
+    }));
+    toast.success(isGu ? `ધોરણ ${trimmed} ઉમેરાયું` : `Batch ${trimmed} added`);
+    setBatch(newBatchItem.id);
+    setNewBatchStandard("");
+    setAddBatchOpen(false);
+  }
 
   const list = s.students.filter((x) => {
     if (!!x.archived !== showArchived) return false;
@@ -88,7 +114,7 @@ function Students() {
       </div>
 
       {/* Batch Filter Chips */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
+      <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs items-center">
         {[{ id: "all", name: isGu ? "બધી બેચ" : "All Batches" }, ...s.batches].map((b) => (
           <button
             key={b.id}
@@ -103,6 +129,18 @@ function Students() {
             {b.name}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => {
+            setNewBatchStandard("");
+            setAddBatchOpen(true);
+          }}
+          className="chip shrink-0 px-3 py-1.5 font-bold border border-dashed border-primary/60 text-primary hover:bg-primary/10 transition flex items-center gap-1"
+          title={isGu ? "નવી બેચ ઉમેરો" : "Add New Batch"}
+        >
+          <Plus className="size-3.5" />
+          <span>{isGu ? "નવી બેચ" : "New Batch"}</span>
+        </button>
       </div>
 
       {/* Active vs Archived Toggle */}
@@ -250,7 +288,69 @@ function Students() {
       </div>
 
       {/* ADD STUDENT SHEET */}
-      <AddStudentSheet open={addOpen} onClose={() => setAddOpen(false)} />
+      <AddStudentSheet
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onOpenAddBatch={() => {
+          setNewBatchStandard("");
+          setAddBatchOpen(true);
+        }}
+      />
+
+      {/* ADD BATCH SHEET (STANDARD ONLY) */}
+      <Sheet
+        open={addBatchOpen}
+        onClose={() => setAddBatchOpen(false)}
+        title={isGu ? "નવી બેચ ઉમેરો" : "Add New Batch"}
+      >
+        <div className="space-y-4 pb-6">
+          <div>
+            <label className="label">{isGu ? "ધોરણ (Standard) *" : "Standard *"}</label>
+            <input
+              className="field font-bold text-base"
+              placeholder={isGu ? "દા.ત. 10th અથવા 12th Science" : "e.g. 10th, 9th, 12th Science"}
+              value={newBatchStandard}
+              onChange={(e) => setNewBatchStandard(e.target.value)}
+              autoFocus
+            />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              {isGu
+                ? "ઝડપી પસંદગી માટે નીચેના ધોરણ પર ક્લિક કરો:"
+                : "Quick select standard:"}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {[
+                "8th",
+                "9th",
+                "10th",
+                "11th Science",
+                "11th Commerce",
+                "11th Arts",
+                "12th Science",
+                "12th Commerce",
+                "12th Arts",
+              ].map((std) => (
+                <button
+                  key={std}
+                  type="button"
+                  className={`chip border text-[11px] font-bold transition ${
+                    newBatchStandard === std
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 hover:bg-muted text-foreground"
+                  }`}
+                  onClick={() => setNewBatchStandard(std)}
+                >
+                  {std}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Button className="w-full h-12 text-base font-bold shadow-md" onClick={saveNewBatch}>
+            {isGu ? "બેચ ઉમેરો" : "Add Batch"}
+          </Button>
+        </div>
+      </Sheet>
     </AppShell>
   );
 }
@@ -258,9 +358,11 @@ function Students() {
 function AddStudentSheet({
   open,
   onClose,
+  onOpenAddBatch,
 }: {
   open: boolean;
   onClose: () => void;
+  onOpenAddBatch?: () => void;
 }) {
   const s = useStore();
   const { lang } = useLanguage();
@@ -270,7 +372,7 @@ function AddStudentSheet({
     phone: "",
     parentPhone: "",
     batchId: s.batches[0]?.id || "",
-    standard: "10th",
+    standard: s.batches[0]?.standard || "10th",
     school: "",
     monthlyFee: "2500",
     totalFee: "30000",
@@ -278,6 +380,16 @@ function AddStudentSheet({
     address: "",
     notes: "",
   });
+
+  useEffect(() => {
+    if ((!f.batchId || !s.batches.some((b) => b.id === f.batchId)) && s.batches.length > 0) {
+      setF((prev) => ({
+        ...prev,
+        batchId: s.batches[0].id,
+        standard: s.batches[0].standard || prev.standard || "10th",
+      }));
+    }
+  }, [s.batches, f.batchId]);
 
   const save = () => {
     if (!f.name.trim() || !f.batchId) {
@@ -375,25 +487,49 @@ function AddStudentSheet({
             />
           </div>
           <div>
-            <label className="label">{isGu ? "બેચ" : "Batch"} *</label>
-            <select
-              className="field"
-              value={f.batchId}
-              onChange={(e) => {
-                const b = s.batches.find((item) => item.id === e.target.value);
-                setF({
-                  ...f,
-                  batchId: e.target.value,
-                  standard: b?.standard || f.standard,
-                });
-              }}
-            >
-              {s.batches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} ({b.standard})
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between">
+              <label className="label mb-0">{isGu ? "બેચ" : "Batch"} *</label>
+              {onOpenAddBatch && (
+                <button
+                  type="button"
+                  onClick={onOpenAddBatch}
+                  className="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5"
+                >
+                  <Plus className="size-3" />
+                  <span>{isGu ? "નવી બેચ" : "New Batch"}</span>
+                </button>
+              )}
+            </div>
+            {s.batches.length > 0 ? (
+              <select
+                className="field mt-1"
+                value={f.batchId}
+                onChange={(e) => {
+                  const b = s.batches.find((item) => item.id === e.target.value);
+                  setF({
+                    ...f,
+                    batchId: e.target.value,
+                    standard: b?.standard || f.standard,
+                  });
+                }}
+              >
+                {s.batches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({b.standard})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full text-xs font-bold border-dashed h-10 gap-1 text-primary mt-1"
+                onClick={onOpenAddBatch}
+              >
+                <Plus className="size-3.5" />
+                {isGu ? "પહેલા બેચ બનાવો" : "Create Batch First"}
+              </Button>
+            )}
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import { LockKeyhole, ShieldCheck } from "lucide-react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { clearLocalCache, hydrateFromCloud, flushCloud } from "@/lib/store";
-import { changePin, getLockStatus, lockApp, unlockApp } from "@/lib/cloud.functions";
+import { getLockStatus, lockApp, unlockApp, FIXED_MASTER_PIN } from "@/lib/cloud.functions";
 import { Button } from "@/components/ui/button";
 import { AuthContext } from "@/lib/auth-context";
 
@@ -72,146 +72,171 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const [gate, setGate] = useState<"loading" | "locked" | "open">("loading");
-  const [hasPin, setHasPin] = useState(false);
   const [pin, setPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
-  const [changingPin, setChangingPin] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
-    void getLockStatus().then(async (status) => {
-      if (!active) return;
-      setHasPin(status.hasPin);
-      if (status.unlocked) {
-        await hydrateFromCloud();
-        if (active) setGate("open");
-      } else setGate("locked");
-    }).catch(async () => {
-      if (active) {
-        const localPin = typeof window !== "undefined" ? localStorage.getItem("gurukul-owner-pin") : null;
-        const localUnlocked = typeof window !== "undefined" ? sessionStorage.getItem("gurukul-unlocked") === "true" : false;
-        setHasPin(Boolean(localPin));
-        if (localUnlocked && localPin) {
-          try { await hydrateFromCloud(); } catch {}
+    void getLockStatus()
+      .then(async (status) => {
+        if (!active) return;
+        const localUnlocked =
+          typeof window !== "undefined"
+            ? sessionStorage.getItem("gurukul-unlocked") === "true"
+            : false;
+        if (status.unlocked && localUnlocked) {
+          await hydrateFromCloud();
           if (active) setGate("open");
         } else {
           setGate("locked");
         }
-      }
-    });
-    return () => { active = false; };
+      })
+      .catch(async () => {
+        if (active) {
+          const localUnlocked =
+            typeof window !== "undefined"
+              ? sessionStorage.getItem("gurukul-unlocked") === "true"
+              : false;
+          if (localUnlocked) {
+            try {
+              await hydrateFromCloud();
+            } catch {}
+            if (active) setGate("open");
+          } else {
+            setGate("locked");
+          }
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function submitPin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!/^\d{4,8}$/.test(pin)) { toast.error("Choose a PIN with 4 to 8 numbers."); return; }
-    if ((!hasPin || changingPin) && pin !== confirmPin) { toast.error("The PINs do not match."); return; }
+    if (!pin) {
+      toast.error("Please enter the PIN.");
+      return;
+    }
     setBusy(true);
     try {
-      const result = !hasPin ? await unlockApp({ data: { pin } }) : changingPin ? await changePin({ data: { pin } }) : await unlockApp({ data: { pin } });
-      if (!result.ok) { toast.error("That PIN did not match. Try again in a moment."); return; }
-      if (!hasPin || changingPin) { setHasPin(true); setChangingPin(false); }
+      if (pin !== FIXED_MASTER_PIN) {
+        toast.error("Incorrect PIN. Please enter the correct PIN.");
+        setPin("");
+        return;
+      }
+      const result = await unlockApp({ data: { pin } });
+      if (!result.ok) {
+        toast.error("Incorrect PIN. Please try again.");
+        setPin("");
+        return;
+      }
       if (typeof window !== "undefined") {
-        localStorage.setItem("gurukul-owner-pin", pin);
         sessionStorage.setItem("gurukul-unlocked", "true");
+        localStorage.setItem("gurukul-owner-pin", FIXED_MASTER_PIN);
       }
       await hydrateFromCloud();
-      setPin(""); setConfirmPin(""); setGate("open");
+      setPin("");
+      setGate("open");
+      toast.success("Welcome back! All records unlocked.");
     } catch {
-      // Graceful fallback for serverless deployments (e.g. Vercel)
-      const localPin = typeof window !== "undefined" ? localStorage.getItem("gurukul-owner-pin") : null;
-      if (!localPin) {
-        localStorage.setItem("gurukul-owner-pin", pin);
-        sessionStorage.setItem("gurukul-unlocked", "true");
-        setHasPin(true);
-        setChangingPin(false);
-        try { await hydrateFromCloud(); } catch {}
-        setPin(""); setConfirmPin(""); setGate("open");
-        toast.success("Owner PIN saved!");
-      } else if (changingPin) {
-        localStorage.setItem("gurukul-owner-pin", pin);
-        sessionStorage.setItem("gurukul-unlocked", "true");
-        setChangingPin(false);
-        try { await hydrateFromCloud(); } catch {}
-        setPin(""); setConfirmPin(""); setGate("open");
-        toast.success("PIN updated successfully!");
-      } else if (localPin === pin) {
-        sessionStorage.setItem("gurukul-unlocked", "true");
-        try { await hydrateFromCloud(); } catch {}
-        setPin(""); setConfirmPin(""); setGate("open");
+      if (pin === FIXED_MASTER_PIN) {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("gurukul-unlocked", "true");
+          localStorage.setItem("gurukul-owner-pin", FIXED_MASTER_PIN);
+        }
+        try {
+          await hydrateFromCloud();
+        } catch {}
+        setPin("");
+        setGate("open");
+        toast.success("Welcome back! All records unlocked.");
       } else {
-        toast.error("That PIN did not match. Try again in a moment.");
+        toast.error("Incorrect PIN. Please enter the correct PIN.");
+        setPin("");
       }
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleLock() {
-    try { await flushCloud(); } catch { return; }
-    try { await lockApp(); } catch {}
+    try {
+      await flushCloud();
+    } catch {
+      return;
+    }
+    try {
+      await lockApp();
+    } catch {}
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("gurukul-unlocked");
     }
     clearLocalCache();
     queryClient.clear();
-    setPin(""); setConfirmPin(""); setChangingPin(false); setGate("locked");
-  }
-
-  async function handleUpdatePin(newPin: string) {
-    if (!/^\d{4,8}$/.test(newPin)) {
-      return { ok: false, message: "PIN must be 4 to 8 digits." };
-    }
-    try {
-      await changePin({ data: { pin: newPin } });
-      if (typeof window !== "undefined") {
-        localStorage.setItem("gurukul-owner-pin", newPin);
-        sessionStorage.setItem("gurukul-unlocked", "true");
-      }
-      return { ok: true };
-    } catch {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("gurukul-owner-pin", newPin);
-        sessionStorage.setItem("gurukul-unlocked", "true");
-      }
-      return { ok: true };
-    }
+    setPin("");
+    setGate("locked");
   }
 
   if (gate !== "open") {
-    const setup = !hasPin;
     return (
       <main className="owner-gate">
         <section className="gate-panel">
-          <div className="gate-mark"><img src="/favicon.png" alt="" /></div>
+          <div className="gate-mark">
+            <img src="/favicon.png" alt="" />
+          </div>
           <p className="gate-eyebrow">GURUKUL GROUP TUITION</p>
-          <h1>{gate === "loading" ? "Opening your records" : setup ? "Set your owner PIN" : changingPin ? "Choose a new PIN" : "Welcome back"}</h1>
-          <p className="gate-copy">{gate === "loading" ? "Connecting to your saved information…" : setup ? "Choose 4 to 8 numbers to keep your students and fee records private." : "Enter your PIN to open your saved records."}</p>
+          <h1>{gate === "loading" ? "Opening records…" : "Owner Login"}</h1>
+          <p className="gate-copy">
+            {gate === "loading"
+              ? "Connecting to your records…"
+              : "Enter your owner PIN to access all student, fee and class records."}
+          </p>
           {gate !== "loading" && (
             <form className="gate-form" onSubmit={submitPin}>
-              <label className="gate-label" htmlFor="owner-pin">{changingPin || setup ? "New PIN" : "Owner PIN"}</label>
-              <input id="owner-pin" autoComplete="new-password" inputMode="numeric" pattern="[0-9]{4,8}" maxLength={8} minLength={4} required className="field text-center text-2xl font-bold tracking-[0.3em]" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))} />
-              {(setup || changingPin) && <><label className="gate-label mt-3" htmlFor="confirm-pin">Confirm PIN</label><input id="confirm-pin" autoComplete="new-password" inputMode="numeric" pattern="[0-9]{4,8}" maxLength={8} minLength={4} required className="field text-center text-2xl font-bold tracking-[0.3em]" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 8))} /></>}
-              <Button className="mt-5 h-12 w-full text-base" type="submit" disabled={busy}>{busy ? "Please wait…" : setup ? "SAVE PIN" : changingPin ? "UPDATE PIN" : "OPEN GURUKUL"}<LockKeyhole className="size-4" /></Button>
-              {changingPin && <Button variant="ghost" className="mt-2 w-full" type="button" onClick={() => { setChangingPin(false); setPin(""); setConfirmPin(""); }}>Cancel</Button>}
+              <label className="gate-label" htmlFor="owner-pin">
+                Enter PIN to Login
+              </label>
+              <input
+                id="owner-pin"
+                type="password"
+                autoComplete="current-password"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                minLength={4}
+                autoFocus
+                required
+                className="field text-center text-2xl font-bold tracking-[0.4em]"
+                placeholder="••••"
+                value={pin}
+                onChange={(e) =>
+                  setPin(e.target.value.replace(/\D/g, "").slice(0, 4))
+                }
+              />
+              <Button
+                className="mt-5 h-12 w-full text-base font-bold shadow-md gap-2"
+                type="submit"
+                disabled={busy}
+              >
+                {busy ? "Signing in…" : "LOGIN"}
+                <LockKeyhole className="size-4" />
+              </Button>
             </form>
           )}
-          {gate === "locked" && hasPin && <p className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="size-4 text-success" />Your saved records are private</p>}
+          {gate === "locked" && (
+            <p className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+              Single-owner protected portal
+            </p>
+          )}
         </section>
       </main>
     );
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        lockApp: handleLock,
-        startChangePin: () => {
-          setChangingPin(true);
-          setGate("locked");
-        },
-        updatePin: handleUpdatePin,
-      }}
-    >
+    <AuthContext.Provider value={{ lockApp: handleLock }}>
       <QueryClientProvider client={queryClient}>
         <Outlet />
         <Toaster position="top-center" richColors />

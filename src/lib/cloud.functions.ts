@@ -29,46 +29,20 @@ async function requireUnlocked() {
   if (!s.data.unlocked) throw new Error("LOCKED");
 }
 
+export const FIXED_MASTER_PIN = "1978";
+
 export const getLockStatus = createServerFn({ method: "GET" }).handler(async () => {
-  const db = await admin();
-  const { data } = await db.from("app_secrets").select("key").eq("key", "pin").maybeSingle();
   const s = await session();
-  return { hasPin: !!data, unlocked: !!s.data.unlocked && !!data };
+  return { hasPin: true, unlocked: !!s.data.unlocked };
 });
 
-const pinSchema = z.object({ pin: z.string().regex(/^\d{4,8}$/) });
+const pinSchema = z.object({ pin: z.string() });
 
 export const unlockApp = createServerFn({ method: "POST" })
   .inputValidator((d) => pinSchema.parse(d))
   .handler(async ({ data }) => {
-    const db = await admin();
-    const { data: row } = await db.from("app_secrets").select("value").eq("key", "pin").maybeSingle();
-    const { data: attemptRow } = await db.from("app_secrets").select("value").eq("key", "pin_attempts").maybeSingle();
-    const { data: untilRow } = await db.from("app_secrets").select("value").eq("key", "pin_locked_until").maybeSingle();
-    if (Number(untilRow?.value ?? 0) > Date.now()) return { ok: false as const, locked: true as const };
-    if (!row) {
-      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
-      const salt = Array.from(saltBytes, (value) => value.toString(16).padStart(2, "0")).join("");
-      const h = await hashPin(data.pin, salt);
-      const { error } = await db.from("app_secrets").insert({ key: "pin", value: `${salt}:${h}` });
-      if (error) return { ok: false as const, locked: false as const };
-    } else {
-      const [salt, stored] = row.value.split(":");
-      if (!salt || !stored || stored.length !== 64) return { ok: false as const, locked: false as const };
-      const h = await hashPin(data.pin, salt);
-      let diff = 0;
-      for (let i = 0; i < stored.length; i++) diff |= h.charCodeAt(i) ^ stored.charCodeAt(i);
-      if (diff !== 0) {
-        const attempts = Number(attemptRow?.value ?? 0) + 1;
-        await db.from("app_secrets").upsert({ key: "pin_attempts", value: String(attempts) });
-        if (attempts >= 5) {
-          await db.from("app_secrets").upsert({ key: "pin_locked_until", value: String(Date.now() + 60_000) });
-          await db.from("app_secrets").upsert({ key: "pin_attempts", value: "0" });
-          return { ok: false as const, locked: true as const };
-        }
-        return { ok: false as const, locked: false as const };
-      }
-      await db.from("app_secrets").upsert({ key: "pin_attempts", value: "0" });
+    if (data.pin.trim() !== FIXED_MASTER_PIN) {
+      return { ok: false as const, locked: false as const };
     }
     const s = await session();
     await s.update({ unlocked: true });
@@ -140,14 +114,7 @@ export const saveParts = createServerFn({ method: "POST" })
   });
 
 export const changePin = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ pin: pinSchema.shape.pin }).parse(d))
-  .handler(async ({ data }) => {
-    await requireUnlocked();
-    const db = await admin();
-    const saltBytes = crypto.getRandomValues(new Uint8Array(16));
-    const salt = Array.from(saltBytes, (value) => value.toString(16).padStart(2, "0")).join("");
-    const value = `${salt}:${await hashPin(data.pin, salt)}`;
-    const { error } = await db.from("app_secrets").upsert({ key: "pin", value });
-    if (error) throw new Error("Could not update PIN");
-    return { ok: true };
+  .inputValidator((d) => z.object({ pin: z.string() }).parse(d))
+  .handler(async () => {
+    throw new Error("Changing PIN is disabled. The application uses a fixed owner PIN (1978).");
   });

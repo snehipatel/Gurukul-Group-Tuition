@@ -1,8 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { UserPlus, CheckSquare, IndianRupee, AlertTriangle, FileText } from "lucide-react";
+import { useState } from "react";
+import { UserPlus, CheckSquare, IndianRupee, AlertTriangle, FileText, FileSpreadsheet, Download } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
 import { useStore, today, thisMonth, rupee, pendingFor, attendancePct, niceDate } from "@/lib/store";
 import { useLanguage, formatGujaratiDate, getStudentDisplayName } from "@/lib/i18n";
+import { exportTuitionExcel } from "@/lib/excel-export";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,6 +25,28 @@ function Home() {
   const s = useStore();
   const { lang, t: translate } = useLanguage();
   const isGu = lang === "gu";
+  const [isExporting, setIsExporting] = useState(false);
+
+  function handleExportExcel() {
+    try {
+      setIsExporting(true);
+      const fileName = exportTuitionExcel(s);
+      toast.success(
+        isGu
+          ? `એક્સેલ ફાઇલ ડાઉનલોડ શરૂ થઈ: ${fileName}`
+          : `Excel export completed: ${fileName}`
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        isGu
+          ? "એક્સેલ ફાઇલ બનાવવામાં ક્ષતિ આવી."
+          : "Failed to export Excel file."
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }
   const t = today();
   const active = s.students.filter((x) => !x.archived);
   const recs = s.attendance.filter((r) => r.date === t);
@@ -51,6 +77,34 @@ function Home() {
         </div>
       </div>
 
+      {/* Excel Export Card */}
+      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+            <FileSpreadsheet className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-foreground">
+              {isGu ? "હિસાબ એક્સેલ ફાઇલ (Excel Export)" : "Complete Tuition Accounts (Excel)"}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {isGu
+                ? "માસ્ટર લેજર, ધોરણ મુજબ ફી, ૧૩૮+ પહોંચો, ખર્ચ અને ફિક્સ ડિપોઝિટ"
+                : "Master ledger, standard breakdown, all 138 receipts, expenses & FDs"}
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={isExporting}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 rounded-xl py-2.5 px-4 shadow-sm transition active:scale-95 shrink-0"
+        >
+          <Download className="h-4 w-4" />
+          {isExporting ? (isGu ? "તૈયાર થાય છે..." : "Exporting...") : (isGu ? "Excel ડાઉનલોડ" : "Export Excel")}
+        </Button>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <Stat
           label={isGu ? "હાજર વિદ્યાર્થીઓ" : "Students present"}
@@ -74,10 +128,21 @@ function Home() {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Quick to="/students" icon={UserPlus} label={isGu ? "વિદ્યાર્થી ઉમેરો" : "Add Student"} />
         <Quick to="/attendance" icon={CheckSquare} label={isGu ? "હાજરી પૂરો" : "Attendance"} />
         <Quick to="/fees" icon={FileText} label={isGu ? "ફી પહોંચ" : "Fee Receipt"} />
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={isExporting}
+          className="card flex flex-col items-center gap-2 p-3 text-center text-xs font-bold active:scale-95 shadow-sm hover:border-emerald-500/40 transition group cursor-pointer"
+        >
+          <span className="rounded-2xl bg-emerald-500/10 p-3 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition">
+            <FileSpreadsheet className="h-6 w-6" />
+          </span>
+          {isGu ? "Excel ડાઉનલોડ" : "Export Excel"}
+        </button>
       </div>
 
       {(unmarked.length > 0 || pendingCount > 0 || lowAtt.length > 0) && (

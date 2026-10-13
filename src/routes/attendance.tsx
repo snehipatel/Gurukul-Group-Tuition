@@ -17,7 +17,6 @@ import {
   ArchiveRestore,
   FileText,
   UserCheck,
-  IndianRupee,
 } from "lucide-react";
 import { AppShell, Sheet } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -37,7 +36,6 @@ import {
   facultyAttendanceStats,
   type AttendanceRecord,
   type Faculty,
-  type SalaryType,
 } from "@/lib/store";
 import { toast } from "sonner";
 
@@ -86,10 +84,6 @@ function Attendance() {
     nameGu: "",
     subject: "",
     phone: "",
-    salaryType: "per_student" as SalaryType,
-    ratePerStudent: "1500",
-    ratePerLecture: "600",
-    salary: "25000",
     qualification: "",
     notes: "",
   });
@@ -146,10 +140,6 @@ function Attendance() {
       nameGu: "",
       subject: "",
       phone: "",
-      salaryType: "per_student",
-      ratePerStudent: "1500",
-      ratePerLecture: "600",
-      salary: "25000",
       qualification: "",
       notes: "",
     });
@@ -158,19 +148,11 @@ function Attendance() {
 
   function startEditFaculty(person: Faculty) {
     setEditingFaculty(person);
-    const model: SalaryType =
-      person.salaryType ||
-      (person.ratePerLecture && !person.ratePerStudent ? "per_lecture" : "per_student");
-
     setFacultyForm({
       name: person.name,
       nameGu: person.nameGu || "",
       subject: person.subject,
       phone: person.phone,
-      salaryType: model,
-      ratePerStudent: String(person.ratePerStudent ?? 1500),
-      ratePerLecture: String(person.ratePerLecture ?? 600),
-      salary: String(person.salary ?? 25000),
       qualification: person.qualification || "",
       notes: person.notes || "",
     });
@@ -189,16 +171,6 @@ function Attendance() {
       nameGu: facultyForm.nameGu.trim() || undefined,
       subject: facultyForm.subject.trim() || "General",
       phone: facultyForm.phone.trim(),
-      salaryType: facultyForm.salaryType,
-      ratePerStudent:
-        facultyForm.salaryType === "per_student"
-          ? Number(facultyForm.ratePerStudent) || 1500
-          : undefined,
-      ratePerLecture:
-        facultyForm.salaryType === "per_lecture"
-          ? Number(facultyForm.ratePerLecture) || 600
-          : undefined,
-      salary: Number(facultyForm.salary) || 0,
       qualification: facultyForm.qualification.trim() || undefined,
       notes: facultyForm.notes.trim() || undefined,
       joiningDate: editingFaculty?.joiningDate || today(),
@@ -713,9 +685,6 @@ function Attendance() {
                 : person.name;
               const fStats = facultyAttendanceStats(s, person.id);
               const status = faForDate[person.id];
-              const isPerLecture =
-                person.salaryType === "per_lecture" ||
-                (!person.salaryType && person.ratePerLecture && !person.ratePerStudent);
 
               return (
                 <article
@@ -747,21 +716,12 @@ function Attendance() {
                         )}
                       </div>
 
-                      {/* Rate (Either Per Student OR Per Lecture, not both) & Subject Info */}
+                      {/* Subject & Qualification Info */}
                       <div className="flex items-center gap-2 flex-wrap mt-1 text-xs">
                         <span className="text-muted-foreground">
                           {person.subject}
                           {person.qualification ? ` · ${person.qualification}` : ""}
                         </span>
-                        {isPerLecture ? (
-                          <span className="chip bg-blue-500/10 text-blue-700 dark:text-blue-400 font-bold text-[10px] px-2 py-0.5">
-                            {rupee(person.ratePerLecture ?? 600)}/{isGu ? "લેક્ચર" : "lecture"}
-                          </span>
-                        ) : (
-                          <span className="chip bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold text-[10px] px-2 py-0.5">
-                            {rupee(person.ratePerStudent ?? 1500)}/{isGu ? "વિદ્યાર્થી" : "student"}
-                          </span>
-                        )}
                       </div>
                     </div>
 
@@ -863,8 +823,8 @@ function Attendance() {
                             setDetailsFaculty(person);
                           }}
                         >
-                          <IndianRupee className="size-3.5" />
-                          <span>{isGu ? "વિગતો અને પગાર" : "Details & Salary"}</span>
+                          <Calendar className="size-3.5" />
+                          <span>{isGu ? "વિગતો અને હાજરી" : "Details & Attendance"}</span>
                         </Button>
 
                         <Button
@@ -902,7 +862,7 @@ function Attendance() {
       )}
 
       {/* ----------------------------------------------------
-          FACULTY DETAILS & MONTHLY SALARY MODAL
+          FACULTY DETAILS & ATTENDANCE MODAL
           ---------------------------------------------------- */}
       {detailsFaculty && (
         <FacultyDetailsModal
@@ -1000,105 +960,6 @@ function Attendance() {
               }
             />
           </div>
-          {/* Salary Model Selection (EITHER per student OR per lecture) */}
-          <div>
-            <label className="label">
-              {isGu ? "પગાર ગણતરી પદ્ધતિ (મોડેલ) *" : "Salary Calculation Model *"}
-            </label>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              <button
-                type="button"
-                className={`rounded-xl py-2 px-3 text-xs font-bold border transition ${
-                  facultyForm.salaryType === "per_student"
-                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                    : "bg-muted/40 text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() =>
-                  setFacultyForm({ ...facultyForm, salaryType: "per_student" })
-                }
-              >
-                {isGu ? "👨‍🎓 પ્રતિ વિદ્યાર્થી ફી" : "👨‍🎓 Per Student"}
-              </button>
-              <button
-                type="button"
-                className={`rounded-xl py-2 px-3 text-xs font-bold border transition ${
-                  facultyForm.salaryType === "per_lecture"
-                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                    : "bg-muted/40 text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() =>
-                  setFacultyForm({ ...facultyForm, salaryType: "per_lecture" })
-                }
-              >
-                {isGu ? "📚 પ્રતિ લેક્ચર દર" : "📚 Per Lecture"}
-              </button>
-            </div>
-          </div>
-
-          {/* Conditional Single Rate Input based on Model */}
-          {facultyForm.salaryType === "per_student" ? (
-            <div>
-              <label className="label">
-                {isGu ? "પ્રતિ વિદ્યાર્થી ફી દર (₹) *" : "Fee Per Student Rate (₹) *"}
-              </label>
-              <input
-                className="field font-bold text-primary"
-                inputMode="numeric"
-                placeholder="1500"
-                value={facultyForm.ratePerStudent}
-                onChange={(e) =>
-                  setFacultyForm({
-                    ...facultyForm,
-                    ratePerStudent: e.target.value.replace(/\D/g, ""),
-                  })
-                }
-              />
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {isGu
-                  ? "પગાર = (કુલ સક્રિય વિદ્યાર્થીઓ × પ્રતિ વિદ્યાર્થી ફી) × હાજરી ગુણોત્તર"
-                  : "Salary = (Active Students × Rate) × Attendance Ratio"}
-              </p>
-            </div>
-          ) : (
-            <div>
-              <label className="label">
-                {isGu ? "પ્રતિ લેક્ચર દર (₹) *" : "Rate Per Lecture (₹) *"}
-              </label>
-              <input
-                className="field font-bold text-primary"
-                inputMode="numeric"
-                placeholder="600"
-                value={facultyForm.ratePerLecture}
-                onChange={(e) =>
-                  setFacultyForm({
-                    ...facultyForm,
-                    ratePerLecture: e.target.value.replace(/\D/g, ""),
-                  })
-                }
-              />
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {isGu
-                  ? "પગાર = લીધેલા લેક્ચર્સ (હાજર દિવસો) × પ્રતિ લેક્ચર દર"
-                  : "Salary = Attended Lectures (Present Days) × Rate Per Lecture"}
-              </p>
-            </div>
-          )}
-          <div>
-            <label className="label">
-              {isGu ? "સામાન્ય માસિક પગાર (સંદર્ભ માટે ₹)" : "Base Monthly Reference Salary (₹)"}
-            </label>
-            <input
-              className="field"
-              inputMode="numeric"
-              value={facultyForm.salary}
-              onChange={(e) =>
-                setFacultyForm({
-                  ...facultyForm,
-                  salary: e.target.value.replace(/\D/g, ""),
-                })
-              }
-            />
-          </div>
           <div>
             <label className="label">
               {isGu ? "શૈક્ષણિક લાયકાત" : "Qualification"}
@@ -1165,7 +1026,7 @@ function Attendance() {
               : "This faculty member will be returned to the active directory."
             : isGu
             ? "આ શિક્ષક આર્કાઇવમાં ખસેડવામાં આવશે પરંતુ તેમનો ઇતિહાસ સુરક્ષિત રહેશે."
-            : `${facultyArchiveTarget?.name} will be moved to archives, but their past class and salary history will remain intact.`
+            : `${facultyArchiveTarget?.name} will be moved to archives, but their past classes and attendance history will remain intact.`
         }
         confirmLabel={
           facultyArchiveTarget?.archived

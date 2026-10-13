@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Plus, Search, ArchiveRestore, UserPlus, IndianRupee } from "lucide-react";
+import { Plus, Search, ArchiveRestore, UserPlus, IndianRupee, Trash2 } from "lucide-react";
 import { AppShell, Sheet } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useLanguage, translate, getStudentDisplayName, toGujaratiName } from "@/lib/i18n";
 import {
   useStore,
@@ -45,6 +46,28 @@ function Students() {
   const [addOpen, setAddOpen] = useState(false);
   const [addBatchOpen, setAddBatchOpen] = useState(false);
   const [newBatchStandard, setNewBatchStandard] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
+
+  function handleDeleteStudent() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    update((state) => ({
+      ...state,
+      students: state.students.filter((x) => x.id !== target.id),
+      attendance: state.attendance.map((rec) => ({
+        ...rec,
+        present: rec.present.filter((id) => id !== target.id),
+        absent: rec.absent.filter((id) => id !== target.id),
+      })),
+      marks: state.marks.filter((m) => m.studentId !== target.id),
+    }));
+    toast.success(
+      isGu
+        ? `${getStudentDisplayName(target, "gu")} કાયમ માટે ડિલીટ કરાયા`
+        : `${target.name} permanently deleted`
+    );
+    setDeleteTarget(null);
+  }
 
   function saveNewBatch() {
     const trimmed = newBatchStandard.trim();
@@ -223,26 +246,50 @@ function Students() {
                       : isGu ? "પૂર્ણ ચૂકતે" : "Paid in Full"}
                   </span>
 
-                  {st.archived && (
+                  {st.archived ? (
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs font-bold"
+                        onClick={() => {
+                          update((state) => ({
+                            ...state,
+                            students: state.students.map((x) =>
+                              x.id === st.id ? { ...x, archived: false } : x
+                            ),
+                          }));
+                          toast.success(
+                            isGu
+                              ? `${getStudentDisplayName(st, "gu")} સક્રિય યાદીમાં ઉમેરાયા`
+                              : `${st.name} restored to active list`
+                          );
+                        }}
+                      >
+                        <ArchiveRestore className="size-3.5 mr-1" /> Restore
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/30"
+                        onClick={() => setDeleteTarget(st)}
+                      >
+                        <Trash2 className="size-3.5 mr-1" /> {isGu ? "ડિલીટ" : "Delete"}
+                      </Button>
+                    </div>
+                  ) : (
                     <Button
                       size="sm"
-                      variant="outline"
-                      className="h-8 text-xs font-bold"
-                      onClick={() => {
-                        update((state) => ({
-                          ...state,
-                          students: state.students.map((x) =>
-                            x.id === st.id ? { ...x, archived: false } : x
-                          ),
-                        }));
-                        toast.success(
-                          isGu
-                            ? `${getStudentDisplayName(st, "gu")} સક્રિય યાદીમાં ઉમેરાયા`
-                            : `${st.name} restored to active list`
-                        );
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                      title={isGu ? "વિદ્યાર્થી ડિલીટ કરો" : "Delete Student"}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDeleteTarget(st);
                       }}
                     >
-                      <ArchiveRestore className="size-3.5 mr-1" /> Restore
+                      <Trash2 className="size-4" />
                     </Button>
                   )}
                 </div>
@@ -351,6 +398,25 @@ function Students() {
           </Button>
         </div>
       </Sheet>
+
+      {/* CONFIRM DELETE STUDENT DIALOG */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(op) => !op && setDeleteTarget(null)}
+        title={
+          isGu
+            ? `${deleteTarget ? getStudentDisplayName(deleteTarget, "gu") : ""} ને કાયમ માટે ડિલીટ કરો?`
+            : `Delete ${deleteTarget?.name}?`
+        }
+        description={
+          isGu
+            ? "આ વિદ્યાર્થીની તમામ પ્રોફાઇલ વિગતો, પરીક્ષા ગુણ અને હાજરી કાયમ માટે દૂર થઈ જશે. આ ક્રિયા પૂર્વવત્ કરી શકાતી નથી."
+            : `All personal records, test marks, and attendance entries for ${deleteTarget?.name} will be permanently removed. This action cannot be undone.`
+        }
+        confirmLabel={isGu ? "કાયમ માટે ડિલીટ કરો" : "Delete Permanently"}
+        variant="destructive"
+        onConfirm={handleDeleteStudent}
+      />
     </AppShell>
   );
 }
@@ -374,7 +440,6 @@ function AddStudentSheet({
     batchId: s.batches[0]?.id || "",
     standard: s.batches[0]?.standard || "10th",
     school: "",
-    monthlyFee: "2500",
     totalFee: "30000",
     dueDate: "",
     address: "",
@@ -398,8 +463,7 @@ function AddStudentSheet({
     }
 
     const selectedBatch = s.batches.find((b) => b.id === f.batchId);
-    const mFee = Number(f.monthlyFee) || 0;
-    const tFee = Number(f.totalFee) || (mFee > 0 ? mFee * 12 : 30000);
+    const tFee = Number(f.totalFee) || 30000;
 
     const newStudent: Student = {
       id: uid(),
@@ -412,7 +476,6 @@ function AddStudentSheet({
       school: f.school.trim(),
       address: f.address.trim(),
       notes: f.notes.trim(),
-      monthlyFee: mFee,
       totalFee: tFee,
       dueDate: f.dueDate || undefined,
       joined: today(),
@@ -431,7 +494,6 @@ function AddStudentSheet({
       batchId: s.batches[0]?.id || "",
       standard: "10th",
       school: "",
-      monthlyFee: "2500",
       totalFee: "30000",
       dueDate: "",
       address: "",
@@ -543,34 +605,16 @@ function AddStudentSheet({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="label">{isGu ? "માસિક અંદાજ (₹)" : "Monthly Fee (₹)"}</label>
-            <input
-              className="field"
-              inputMode="numeric"
-              value={f.monthlyFee}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, "");
-                setF({
-                  ...f,
-                  monthlyFee: val,
-                  totalFee: val ? String(Number(val) * 12) : f.totalFee,
-                });
-              }}
-            />
-          </div>
-          <div>
-            <label className="label">{isGu ? "કુલ શૈક્ષણિક ફી (₹)" : "Total Course Fee (₹)"}</label>
-            <input
-              className="field font-bold"
-              inputMode="numeric"
-              value={f.totalFee}
-              onChange={(e) =>
-                setF({ ...f, totalFee: e.target.value.replace(/\D/g, "") })
-              }
-            />
-          </div>
+        <div>
+          <label className="label">{isGu ? "કુલ શૈક્ષણિક ફી (₹)" : "Total Course Fee (₹)"}</label>
+          <input
+            className="field font-bold"
+            inputMode="numeric"
+            value={f.totalFee}
+            onChange={(e) =>
+              setF({ ...f, totalFee: e.target.value.replace(/\D/g, "") })
+            }
+          />
         </div>
 
         <div>

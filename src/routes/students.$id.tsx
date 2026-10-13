@@ -19,6 +19,7 @@ import {
   Plus,
   CheckCircle2,
   XCircle,
+  Trash2,
 } from "lucide-react";
 import { AppShell, Sheet } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,6 @@ import {
   getStudentTestMarks,
   rupee,
   niceDate,
-  paidThisMonth,
   totalPaid,
   formatStudentId,
   formatReceiptNumber,
@@ -78,6 +78,7 @@ function Profile() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [selectedAttMonth, setSelectedAttMonth] = useState<string>("all");
   const [testMarkModalOpen, setTestMarkModalOpen] = useState(false);
@@ -99,7 +100,6 @@ function Profile() {
     standard: st?.standard || "",
     school: st?.school || "",
     address: st?.address || "",
-    monthlyFee: String(st?.monthlyFee || ""),
     totalFee: String(st?.totalFee || ""),
     dueDate: st?.dueDate || "",
     notes: st?.notes || "",
@@ -159,7 +159,6 @@ function Profile() {
       standard: st!.standard || batch?.standard || "",
       school: st!.school || "",
       address: st!.address || "",
-      monthlyFee: String(st!.monthlyFee || ""),
       totalFee: String(st!.totalFee || ""),
       dueDate: st!.dueDate || "",
       notes: st!.notes || "",
@@ -184,8 +183,7 @@ function Profile() {
       standard: form.standard.trim() || selectedBatch?.standard || "10th",
       school: form.school.trim(),
       address: form.address.trim(),
-      monthlyFee: Number(form.monthlyFee) || 0,
-      totalFee: Number(form.totalFee) || (Number(form.monthlyFee) || 0) * 12,
+      totalFee: Number(form.totalFee) || 30000,
       dueDate: form.dueDate || undefined,
       notes: form.notes.trim() || undefined,
     };
@@ -216,6 +214,28 @@ function Profile() {
         : `${st!.name} archived`
     );
     setArchiveConfirm(false);
+    nav({ to: "/students" });
+  }
+
+  function handleDeleteStudent() {
+    if (!st) return;
+    const studentId = st.id;
+    update((state) => ({
+      ...state,
+      students: state.students.filter((x) => x.id !== studentId),
+      attendance: state.attendance.map((rec) => ({
+        ...rec,
+        present: rec.present.filter((sid) => sid !== studentId),
+        absent: rec.absent.filter((sid) => sid !== studentId),
+      })),
+      marks: state.marks.filter((m) => m.studentId !== studentId),
+    }));
+    toast.success(
+      isGu
+        ? `${displayName} કાયમ માટે ડિલીટ કરાયા`
+        : `${st.name} permanently deleted`
+    );
+    setDeleteConfirm(false);
     nav({ to: "/students" });
   }
 
@@ -311,19 +331,29 @@ function Profile() {
       {st.archived && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3.5 text-center">
           <p className="text-xs font-bold text-destructive">
-            This student is currently ARCHIVED.
+            {isGu ? "આ વિદ્યાર્થી હાલમાં આર્કાઇવ કરેલ છે." : "This student is currently ARCHIVED."}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Historical attendance and payment records are preserved.
+            {isGu ? "ભૂતકાળની હાજરી અને ફી રેકોર્ડ્સ સુરક્ષિત છે." : "Historical attendance and payment records are preserved."}
           </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-2 text-xs font-bold"
-            onClick={handleRestore}
-          >
-            <ArchiveRestore className="size-3.5 mr-1" /> Restore Student
-          </Button>
+          <div className="mt-2.5 flex justify-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs font-bold"
+              onClick={handleRestore}
+            >
+              <ArchiveRestore className="size-3.5 mr-1" /> {isGu ? "પુનઃસ્થાપિત કરો" : "Restore Student"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/30"
+              onClick={() => setDeleteConfirm(true)}
+            >
+              <Trash2 className="size-3.5 mr-1" /> {isGu ? "કાયમ માટે ડિલીટ કરો" : "Delete Permanently"}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -888,16 +918,33 @@ function Profile() {
         )}
       </div>
 
-      {/* Archive Student Button */}
-      {!st.archived && (
+      {/* Student Status & Danger Actions */}
+      <div className="grid grid-cols-2 gap-2">
+        {!st.archived ? (
+          <button
+            type="button"
+            className="btn border border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 font-bold text-xs"
+            onClick={() => setArchiveConfirm(true)}
+          >
+            <Archive className="size-4 mr-1.5" /> {isGu ? "આર્કાઇવ કરો" : "Archive Student"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn border border-primary/40 text-primary hover:bg-primary/10 font-bold text-xs"
+            onClick={handleRestore}
+          >
+            <ArchiveRestore className="size-4 mr-1.5" /> {isGu ? "પુનઃસ્થાપિત કરો" : "Restore Student"}
+          </button>
+        )}
         <button
           type="button"
-          className="btn w-full border border-destructive/30 text-destructive hover:bg-destructive/10"
-          onClick={() => setArchiveConfirm(true)}
+          className="btn border border-destructive/40 text-destructive hover:bg-destructive/10 font-bold text-xs"
+          onClick={() => setDeleteConfirm(true)}
         >
-          <Archive className="size-4 mr-2" /> Archive Student
+          <Trash2 className="size-4 mr-1.5" /> {isGu ? "ડિલીટ કરો" : "Delete Student"}
         </button>
-      )}
+      </div>
 
       {/* EDIT STUDENT SHEET */}
       <Sheet
@@ -974,35 +1021,19 @@ function Profile() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="label">Monthly Fee (₹)</label>
-              <input
-                className="field"
-                inputMode="numeric"
-                value={form.monthlyFee}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    monthlyFee: e.target.value.replace(/\D/g, ""),
-                  })
-                }
-              />
-            </div>
-            <div>
-              <label className="label">Total Fee (₹)</label>
-              <input
-                className="field"
-                inputMode="numeric"
-                value={form.totalFee}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    totalFee: e.target.value.replace(/\D/g, ""),
-                  })
-                }
-              />
-            </div>
+          <div>
+            <label className="label">{isGu ? "કુલ શૈક્ષણિક ફી (₹)" : "Total Academic Fee (₹)"}</label>
+            <input
+              className="field font-bold"
+              inputMode="numeric"
+              value={form.totalFee}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  totalFee: e.target.value.replace(/\D/g, ""),
+                })
+              }
+            />
           </div>
 
           <div>
@@ -1056,6 +1087,21 @@ function Profile() {
         onConfirm={handleArchive}
       />
 
+      {/* CONFIRM DELETE STUDENT DIALOG */}
+      <ConfirmDialog
+        open={deleteConfirm}
+        onOpenChange={setDeleteConfirm}
+        title={isGu ? `${displayName} ને કાયમ માટે ડિલીટ કરો?` : `Permanently delete ${st.name}?`}
+        description={
+          isGu
+            ? `${displayName} ની તમામ અંગત વિગતો, પરીક્ષા ગુણ અને હાજરી કાયમ માટે ડિલીટ થઈ જશે. આ ક્રિયા પૂર્વવત્ કરી શકાશે નહીં.`
+            : `All personal records, test marks, and attendance entries for ${st.name} will be permanently removed. This action cannot be undone.`
+        }
+        confirmLabel={isGu ? "કાયમ માટે ડિલીટ કરો" : "Delete Permanently"}
+        variant="destructive"
+        onConfirm={handleDeleteStudent}
+      />
+
       {/* RECORD TEST MARK SHEET */}
       <Sheet
         open={testMarkModalOpen}
@@ -1071,7 +1117,7 @@ function Profile() {
               required
               list="conducted-tests-list"
               className="field font-semibold"
-              placeholder={isGu ? "દા.ત. Unit Test 1 અથવા ગણિત માસિક ટેસ્ટ" : "e.g. Unit Test 1 or Chapter 3 Test"}
+              placeholder={isGu ? "દા.ત. Unit Test 1 અથવા ગણિત પ્રકરણ કસોટી" : "e.g. Unit Test 1 or Chapter 3 Test"}
               value={testMarkDraft.testName}
               onChange={(e) => {
                 const val = e.target.value;

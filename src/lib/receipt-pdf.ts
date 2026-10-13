@@ -6,6 +6,7 @@ import {
   niceDate,
   formatReceiptNumber,
   formatStudentId,
+  studentTotalFee,
   type Payment,
   type Student,
   type Batch,
@@ -110,7 +111,7 @@ export function buildReceiptHtml({
   const totalFeeVal =
     payment.totalFee ||
     student?.totalFee ||
-    (student?.monthlyFee ? student.monthlyFee * 12 : 30000);
+    studentTotalFee(student);
   const prevPaidVal = payment.previousPaid ?? 0;
   const currentPayVal = payment.amount;
   const remBalVal =
@@ -166,9 +167,9 @@ export function buildReceiptHtml({
   }
 
   // Translate Purpose
-  let purposeLabel = payment.purpose || (isGu ? "માસિક ફી" : "Monthly Fees");
+  let purposeLabel = payment.purpose || (isGu ? "ટ્યુશન ફી" : "Tuition Fees");
   if (isGu) {
-    if (payment.purpose === "Monthly Fees") purposeLabel = "માસિક ફી (Monthly Fees)";
+    if (payment.purpose === "Monthly Fees" || payment.purpose === "Tuition Fees") purposeLabel = "ટ્યુશન ફી (Tuition Fees)";
     else if (payment.purpose === "Admission Fees") purposeLabel = "પ્રવેશ ફી (Admission)";
     else if (payment.purpose === "Exam Fees") purposeLabel = "પરીક્ષા ફી";
     else if (payment.purpose === "Material Fees") purposeLabel = "સાહિત્ય ફી";
@@ -727,7 +728,7 @@ export function generateReceiptPdf({
   curY += 9;
 
   const paymentFields: [string, string][] = [
-    ["Payment For:", payment.purpose || "Monthly Fees"],
+    ["Payment For:", payment.purpose || "Tuition Fees"],
     ["Payment Mode:", payment.method || "UPI"],
     ["Transaction Date:", niceDate(payment.date)],
     ["Status:", "VERIFIED & CREDITED"],
@@ -773,7 +774,7 @@ export function generateReceiptPdf({
   const totalFeeVal =
     payment.totalFee ||
     student?.totalFee ||
-    (student?.monthlyFee ? student.monthlyFee * 12 : 30000);
+    studentTotalFee(student);
   const prevPaidVal = payment.previousPaid ?? 0;
   const currentPayVal = payment.amount;
   const remBalVal =

@@ -7,6 +7,7 @@ import {
   getLanguage,
   formatGujaratiDate,
 } from "@/lib/i18n";
+import { OFFICIAL_STATE } from "@/lib/initial-data";
 
 export type Batch = {
   id: string;
@@ -32,14 +33,13 @@ export type Student = {
   school?: string | undefined;
   address?: string | undefined;
   notes?: string | undefined;
-  monthlyFee: number;
+  monthlyFee?: number | undefined;
   totalFee?: number | undefined;
   dueDate?: string | undefined;
   joined: string;
   archived?: boolean | undefined;
+  grNo?: number | undefined;
 };
-
-export type SalaryType = "per_student" | "per_lecture";
 
 export type Faculty = {
   id: string;
@@ -47,10 +47,6 @@ export type Faculty = {
   nameGu?: string | undefined;
   subject: string;
   phone: string;
-  salaryType?: SalaryType | undefined;
-  ratePerStudent?: number | undefined;
-  ratePerLecture?: number | undefined;
-  salary?: number | undefined;
   qualification?: string | undefined;
   joiningDate?: string | undefined;
   notes?: string | undefined;
@@ -152,32 +148,19 @@ export const formatReceiptNumber = (p: { receiptNo: number; date?: string; recei
   return `GGT-${year}-${String(p.receiptNo).padStart(5, "0")}`;
 };
 
-export const formatStudentId = (st: { id: string }) => {
+export const formatStudentId = (st: { id: string; grNo?: number }) => {
+  if (st.grNo) return `GR-${String(st.grNo).padStart(3, "0")}`;
   const digits = st.id.replace(/\D/g, "");
   const num = digits ? String(Number(digits) + 2100).padStart(5, "0") : "02101";
   return `GGT-STU-${num}`;
 };
 
 const seed = (): State => ({
-  faculty: [],
-  batches: [],
-  timetable: [],
-  students: [],
-  attendance: [],
-  facultyAttendance: {},
-  payments: [],
-  tests: [],
-  marks: [],
-  expenses: [],
-  feePlans: [],
-  salaries: [],
+  ...OFFICIAL_STATE,
   settings: {
-    name: "Gurukul Group Tuition",
-    address: "Opp. City Center, Ahmedabad, Gujarat - 380015",
-    phone: "9876543210",
+    ...OFFICIAL_STATE.settings,
     waTemplate: "*Gurukul Group Tuition*\nToday's Absentees — {DATE}\nBatch: {BATCH}\n\n{ABSENT_STUDENTS}\n\nTotal absent: {ABSENT_COUNT}",
   },
-  nextReceipt: 101,
 });
 
 function cleanDummyData(s: Partial<State>): Partial<State> {
@@ -214,17 +197,43 @@ function cleanDummyData(s: Partial<State>): Partial<State> {
 
 function normalizeState(s: State): State {
   const cleaned = cleanDummyData(s);
+  const baseSeed = seed();
+  const studentsToUse = (!cleaned.students || cleaned.students.length === 0)
+    ? baseSeed.students
+    : cleaned.students;
+  const batchesToUse = (!cleaned.batches || cleaned.batches.length === 0)
+    ? baseSeed.batches
+    : cleaned.batches;
+  const facultyToUse = (!cleaned.faculty || cleaned.faculty.length === 0)
+    ? baseSeed.faculty
+    : cleaned.faculty;
+  const paymentsToUse = (!cleaned.payments || cleaned.payments.length === 0)
+    ? baseSeed.payments
+    : cleaned.payments;
+  const expensesToUse = (!cleaned.expenses || cleaned.expenses.length === 0)
+    ? baseSeed.expenses
+    : cleaned.expenses;
+  const nextReceiptToUse = Math.max(
+    cleaned.nextReceipt || 139,
+    baseSeed.nextReceipt,
+    ...paymentsToUse.map((p) => (p.receiptNo || 0) + 1)
+  );
+
   return {
-    ...seed(),
+    ...baseSeed,
     ...cleaned,
-    students: (cleaned.students || []).map((st) => ({
+    batches: batchesToUse,
+    students: studentsToUse.map((st) => ({
       ...st,
       nameGu: st.nameGu || toGujaratiName(st.name),
     })),
-    faculty: (cleaned.faculty || []).map((f) => ({
+    faculty: facultyToUse.map((f) => ({
       ...f,
       nameGu: f.nameGu || toGujaratiName(f.name),
     })),
+    payments: paymentsToUse,
+    expenses: expensesToUse,
+    nextReceipt: nextReceiptToUse,
   };
 }
 
@@ -235,8 +244,16 @@ if (typeof window !== "undefined") {
   try {
     localStorage.removeItem("gurukul-v1");
     const raw = localStorage.getItem(KEY);
-    state = raw ? normalizeState({ ...seed(), ...JSON.parse(raw) }) : normalizeState(seed());
-  } catch { state = normalizeState(seed()); }
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state = normalizeState({ ...seed(), ...parsed });
+    } else {
+      state = normalizeState(seed());
+      saveLocalCache();
+    }
+  } catch {
+    state = normalizeState(seed());
+  }
 }
 const listeners = new Set<() => void>();
 let saveQueue: Promise<void> = Promise.resolve();
@@ -317,7 +334,7 @@ export function useStore() {
 // Derived helpers
 export function studentTotalFee(st?: Student | null): number {
   if (!st) return 30000;
-  return st.totalFee || (st.monthlyFee ? st.monthlyFee * 12 : 30000);
+  return st.totalFee || 30000;
 }
 
 export function totalPaid(s: State, studentId: string): number {
@@ -411,17 +428,8 @@ export function formatDayDate(dateStr: string, isGu: boolean) {
   }
 }
 
-// Monthly Attendance & Salary for a Faculty Member (Per-Student OR Per-Lecture Model)
+// Attendance Statistics for a Faculty Member
 export function facultyMonthlyStats(s: State, facultyId: string, monthStr = thisMonth()) {
-  const fac = s.faculty.find((f) => f.id === facultyId);
-  const salaryType: SalaryType =
-    fac?.salaryType ||
-    (fac?.ratePerLecture && !fac?.ratePerStudent ? "per_lecture" : "per_student");
-
-  const activeStudents = s.students.filter((st) => !st.archived).length;
-  const ratePerStudent = fac?.ratePerStudent ?? 1500;
-  const ratePerLecture = fac?.ratePerLecture ?? 600;
-
   const datesInMonth = Object.keys(s.facultyAttendance || {})
     .filter((d) => d.startsWith(monthStr))
     .sort();
@@ -442,25 +450,8 @@ export function facultyMonthlyStats(s: State, facultyId: string, monthStr = this
   const total = present + absent;
   const pct = total > 0 ? Math.round((present / total) * 100) : null;
 
-  // Potential gross fee if per-student: (active students * rate per student)
-  const baseSalary = activeStudents * ratePerStudent;
-
-  // Calculated salary depends strictly on salaryType (EITHER per student OR per lecture, NOT both)
-  let calculatedSalary = 0;
-  if (salaryType === "per_student") {
-    calculatedSalary = total > 0 ? Math.round((present / total) * baseSalary) : baseSalary;
-  } else {
-    calculatedSalary = present * ratePerLecture;
-  }
-
   return {
     month: monthStr,
-    salaryType,
-    activeStudents,
-    ratePerStudent,
-    ratePerLecture,
-    baseSalary,
-    calculatedSalary,
     present,
     absent,
     total,

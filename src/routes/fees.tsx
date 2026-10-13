@@ -73,7 +73,7 @@ type Tab = "create" | "history" | "overview";
 type TimeFilter = "all" | "today" | "week" | "month" | "custom";
 
 const PURPOSES = [
-  "Monthly Fees",
+  "Tuition Fees",
   "Admission Fee",
   "Exam / Test Fee",
   "Study Material Fee",
@@ -94,7 +94,7 @@ function Fees() {
     studentId: "",
     date: today(),
     amount: "",
-    purpose: "Monthly Fees",
+    purpose: "Tuition Fees",
     customPurpose: "",
     method: "UPI",
     remarks: "",
@@ -280,7 +280,7 @@ function Fees() {
       studentId: "",
       date: today(),
       amount: "",
-      purpose: "Monthly Fees",
+      purpose: "Tuition Fees",
       customPurpose: "",
       method: "UPI",
       remarks: "",
@@ -438,7 +438,7 @@ Date: ${niceDate(payment.date)}
 Student: ${stuName} (${student ? formatStudentId(student) : "—"})
 Standard: ${student?.standard || batch?.standard || "—"} · Batch: ${batch?.name || "—"}
 
-Payment For: ${payment.purpose || "Monthly Fees"}
+Payment For: ${payment.purpose || "Tuition Fees"}
 Amount Received: ${rupee(payment.amount)}
 Payment Method: ${payment.method}
 
@@ -708,7 +708,7 @@ Phone: ${s.settings.phone || "9876543210"}`;
                           : "bg-muted text-muted-foreground hover:bg-muted/80"
                       }`}
                     >
-                      {p === "Monthly Fees" && isGu ? "ટ્યુશન ફી" : p}
+                      {p === "Tuition Fees" && isGu ? "ટ્યુશન ફી" : p}
                     </button>
                   ))}
                 </div>
@@ -1147,10 +1147,10 @@ Phone: ${s.settings.phone || "9876543210"}`;
                               studentId: st.id,
                               date: today(),
                               amount: String(due),
-                              purpose: "Monthly Fees",
+                              purpose: "Tuition Fees",
                               customPurpose: "",
                               method: "UPI",
-                              remarks: "Monthly fee collection",
+                              remarks: "Tuition fee collection",
                             });
                             setTab("create");
                           }}
@@ -1386,7 +1386,7 @@ function ReceiptPreviewModal({
             <div className="grid grid-cols-2 gap-y-1 print:gap-y-2 py-1 print:py-2">
               <div>
                 <span className="text-muted-foreground">{isGu ? "ચુકવણી હેતુ:" : "Payment For:"}</span>{" "}
-                <b className="text-foreground">{payment.purpose || (isGu ? "ટ્યુશન ફી" : "Monthly Fees")}</b>
+                <b className="text-foreground">{payment.purpose || (isGu ? "ટ્યુશન ફી" : "Tuition Fees")}</b>
               </div>
               <div>
                 <span className="text-muted-foreground">{isGu ? "ચુકવણી પદ્ધતિ:" : "Payment Method:"}</span>{" "}

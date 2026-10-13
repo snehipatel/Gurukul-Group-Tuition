@@ -7,16 +7,12 @@ import {
   FileText,
   Pencil,
   Phone,
-  IndianRupee,
-  Users,
   GraduationCap,
-  Clock,
-  AlertTriangle,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   useStore,
-  rupee,
   thisMonth,
   facultyMonthlyStats,
   facultyAllMonthsHistory,
@@ -52,6 +48,10 @@ export function FacultyDetailsModal({
   const facName = isGu
     ? faculty.nameGu || toGujaratiName(faculty.name)
     : faculty.name;
+
+  const assignedBatches = s.batches.filter(
+    (b) => b.facultyId === faculty.id && !b.archived
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm overflow-y-auto">
@@ -96,99 +96,49 @@ export function FacultyDetailsModal({
           </div>
         </div>
 
-        {/* 2. Fee Structure: EITHER Per-Student OR Per-Lecture (Not both) */}
-        <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4 border border-primary/20 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-black uppercase text-primary tracking-wide flex items-center gap-1.5">
-              <IndianRupee className="size-4" />
-              {isGu ? "પગાર સંરચના મોડેલ" : "Salary Structure Basis"}
-            </p>
-            <span className="chip bg-primary text-primary-foreground font-black text-[10px] px-2.5 py-0.5">
-              {stats.salaryType === "per_student"
-                ? isGu
-                  ? "વિદ્યાર્થી દીઠ (Per Student)"
-                  : "Per-Student Basis"
-                : isGu
-                ? "લેક્ચર દીઠ (Per Lecture)"
-                : "Per-Lecture Basis"}
-            </span>
+        {/* 2. Faculty Academic Info & Assigned Batches */}
+        <div className="rounded-2xl bg-muted/30 p-4 border space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <span className="text-muted-foreground block font-bold">
+                {isGu ? "મુખ્ય વિષય:" : "Primary Subject:"}
+              </span>
+              <span className="font-extrabold text-foreground text-sm">
+                {faculty.subject}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block font-bold">
+                {isGu ? "શૈક્ષણિક લાયકાત:" : "Qualification:"}
+              </span>
+              <span className="font-semibold text-foreground">
+                {faculty.qualification || "—"}
+              </span>
+            </div>
           </div>
 
-          {stats.salaryType === "per_student" ? (
-            <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="rounded-xl bg-card border p-2.5 shadow-2xs">
-                <span className="text-[10px] font-bold text-muted-foreground block">
-                  {isGu ? "પ્રતિ વિદ્યાર્થી ફી" : "Fee Per Student"}
-                </span>
-                <p className="text-lg font-black text-primary mt-0.5">
-                  {rupee(stats.ratePerStudent)}
-                </p>
-                <span className="text-[10px] text-muted-foreground">
-                  {isGu ? "/વિદ્યાર્થી" : "per student"}
-                </span>
-              </div>
-
-              <div className="rounded-xl bg-card border p-2.5 shadow-2xs">
-                <span className="text-[10px] font-bold text-muted-foreground block">
-                  {isGu ? "કુલ વિદ્યાર્થીઓ" : "Total Students"}
-                </span>
-                <p className="text-lg font-black text-foreground mt-0.5">
-                  {stats.activeStudents}
-                </p>
-                <span className="text-[10px] text-muted-foreground">
-                  {isGu ? "સક્રિય વિદ્યાર્થી" : "active enrolled"}
-                </span>
-              </div>
-
-              <div className="rounded-xl bg-card border p-2.5 shadow-2xs">
-                <span className="text-[10px] font-bold text-muted-foreground block">
-                  {isGu ? "સંભવિત કુલ રકમ" : "Gross Potential"}
-                </span>
-                <p className="text-lg font-black text-foreground mt-0.5">
-                  {rupee(stats.baseSalary)}
-                </p>
-                <span className="text-[10px] text-muted-foreground">
-                  {isGu ? "૧૦૦% હાજરીએ" : "at 100% att"}
-                </span>
+          {assignedBatches.length > 0 && (
+            <div className="pt-2 border-t">
+              <span className="text-muted-foreground block font-bold mb-1 flex items-center gap-1">
+                <BookOpen className="size-3.5 text-primary" />
+                {isGu ? "સોંપેલ બેચ:" : "Assigned Batches:"}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {assignedBatches.map((b) => (
+                  <span
+                    key={b.id}
+                    className="chip bg-card border font-bold text-foreground text-[11px]"
+                  >
+                    {b.name} ({b.standard})
+                  </span>
+                ))}
               </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="rounded-xl bg-card border p-2.5 shadow-2xs">
-                <span className="text-[10px] font-bold text-muted-foreground block">
-                  {isGu ? "પ્રતિ લેક્ચર દર" : "Rate Per Lecture"}
-                </span>
-                <p className="text-lg font-black text-primary mt-0.5">
-                  {rupee(stats.ratePerLecture)}
-                </p>
-                <span className="text-[10px] text-muted-foreground">
-                  {isGu ? "/લેક્ચર" : "per lecture"}
-                </span>
-              </div>
+          )}
 
-              <div className="rounded-xl bg-card border p-2.5 shadow-2xs">
-                <span className="text-[10px] font-bold text-muted-foreground block">
-                  {isGu ? "લીધેલા લેક્ચર્સ" : "Attended Lectures"}
-                </span>
-                <p className="text-lg font-black text-success mt-0.5">
-                  {stats.present}
-                </p>
-                <span className="text-[10px] text-muted-foreground">
-                  {isGu ? "હાજર દિવસ" : "days present"}
-                </span>
-              </div>
-
-              <div className="rounded-xl bg-card border p-2.5 shadow-2xs">
-                <span className="text-[10px] font-bold text-muted-foreground block">
-                  {isGu ? "ચુકી ગયેલા લેક્ચર" : "Missed Lectures"}
-                </span>
-                <p className="text-lg font-black text-destructive mt-0.5">
-                  {stats.absent}
-                </p>
-                <span className="text-[10px] text-muted-foreground">
-                  {isGu ? "ગેરહાજર" : "missed"}
-                </span>
-              </div>
+          {faculty.notes && (
+            <div className="pt-2 border-t text-muted-foreground italic">
+              "{faculty.notes}"
             </div>
           )}
         </div>
@@ -219,7 +169,7 @@ export function FacultyDetailsModal({
           </div>
         </div>
 
-        {/* 4. Monthly Attendance Metrics */}
+        {/* 4. Attendance Metrics */}
         <div className="grid grid-cols-4 gap-2 text-center">
           <div className="rounded-2xl border bg-muted/20 p-2.5">
             <p className="text-[10px] font-bold text-muted-foreground">
@@ -288,119 +238,10 @@ export function FacultyDetailsModal({
           )}
         </div>
 
-        {/* 6. Monthly Salary Calculation Breakdown (Strictly either per_student OR per_lecture) */}
-        <div className="rounded-2xl bg-card border-2 border-primary/30 p-4 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b pb-2">
-            <span className="text-xs font-black uppercase text-primary flex items-center gap-1.5">
-              <IndianRupee className="size-4" />
-              {isGu
-                ? `${formatMonthLabel(selectedMonth, isGu)} નો ગણતરી કરેલ પગાર`
-                : `Calculated Salary for ${formatMonthLabel(selectedMonth, isGu)}`}
-            </span>
-            <span className="chip bg-primary text-primary-foreground font-black text-xs px-2.5 py-0.5">
-              {stats.salaryType === "per_student"
-                ? isGu
-                  ? "વિદ્યાર્થી દીઠ ગણતરી"
-                  : "Per-Student Basis"
-                : isGu
-                ? "લેક્ચર દીઠ ગણતરી"
-                : "Per-Lecture Basis"}
-            </span>
-          </div>
-
-          {stats.salaryType === "per_student" ? (
-            <>
-              {/* Formula calculation explanation for per_student */}
-              <div className="text-xs space-y-1.5 text-muted-foreground font-medium bg-muted/30 p-3 rounded-xl border">
-                <div className="flex justify-between">
-                  <span>{isGu ? "કુલ સક્રિય વિદ્યાર્થીઓ:" : "Active Students:"}</span>
-                  <b className="text-foreground">{stats.activeStudents} વિદ્યાર્થીઓ</b>
-                </div>
-                <div className="flex justify-between">
-                  <span>{isGu ? "પ્રતિ વિદ્યાર્થી ફી દર:" : "Fee per Student Rate:"}</span>
-                  <b className="text-foreground">{rupee(stats.ratePerStudent)}</b>
-                </div>
-                <div className="flex justify-between border-t pt-1">
-                  <span>{isGu ? "સંભવિત પૂર્ણ માસિક રકમ:" : "Gross Potential Fee:"}</span>
-                  <b className="text-foreground">{rupee(stats.baseSalary)}</b>
-                </div>
-                <div className="flex justify-between">
-                  <span>{isGu ? "હાજરી ગુણોત્તર:" : "Attendance Ratio:"}</span>
-                  <b className="text-foreground">
-                    {stats.present} / {stats.total} દિવસ ({stats.pct ?? 0}%)
-                  </b>
-                </div>
-              </div>
-
-              {/* Net Final Calculated Salary */}
-              <div className="flex items-center justify-between rounded-xl bg-primary/10 border border-primary/20 p-3">
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">
-                    {isGu ? "ચુકવવાપાત્ર માસિક પગાર" : "Net Payable Monthly Salary"}
-                  </p>
-                  <p className="text-2xl font-black text-primary">
-                    {rupee(stats.calculatedSalary)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-muted-foreground font-bold">
-                    {isGu ? "ગણતરી પદ્ધતિ:" : "Formula:"}
-                  </p>
-                  <p className="text-xs font-bold text-foreground">
-                    ({stats.present}/{stats.total}) × {rupee(stats.baseSalary)}
-                  </p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Formula calculation explanation for per_lecture */}
-              <div className="text-xs space-y-1.5 text-muted-foreground font-medium bg-muted/30 p-3 rounded-xl border">
-                <div className="flex justify-between">
-                  <span>{isGu ? "પ્રતિ લેક્ચર દર:" : "Rate per Lecture:"}</span>
-                  <b className="text-foreground">{rupee(stats.ratePerLecture)}</b>
-                </div>
-                <div className="flex justify-between">
-                  <span>{isGu ? "લીધેલા લેક્ચર્સ (હાજર દિવસો):" : "Lectures Taken (Present):"}</span>
-                  <b className="text-success font-black">{stats.present} દિવસ / લેક્ચર</b>
-                </div>
-                <div className="flex justify-between">
-                  <span>{isGu ? "ચુકી ગયેલા લેક્ચર્સ (ગેરહાજર):" : "Missed Lectures (Absent):"}</span>
-                  <b className="text-destructive font-black">{stats.absent} દિવસ</b>
-                </div>
-                <div className="flex justify-between border-t pt-1">
-                  <span>{isGu ? "કુલ નિર્ધારિત દિવસો:" : "Total Scheduled Days:"}</span>
-                  <b className="text-foreground">{stats.total} દિવસ</b>
-                </div>
-              </div>
-
-              {/* Net Final Calculated Salary */}
-              <div className="flex items-center justify-between rounded-xl bg-primary/10 border border-primary/20 p-3">
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">
-                    {isGu ? "ચુકવવાપાત્ર માસિક પગાર" : "Net Payable Monthly Salary"}
-                  </p>
-                  <p className="text-2xl font-black text-primary">
-                    {rupee(stats.calculatedSalary)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-muted-foreground font-bold">
-                    {isGu ? "ગણતરી પદ્ધતિ:" : "Formula:"}
-                  </p>
-                  <p className="text-xs font-bold text-foreground">
-                    {stats.present} લેક્ચર × {rupee(stats.ratePerLecture)}
-                  </p>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* 7. Month-by-Month History Table */}
+        {/* 6. Month-by-Month Attendance Breakdown Table */}
         <div className="space-y-2">
           <p className="text-xs font-black uppercase text-foreground">
-            {isGu ? "તમામ મહિનાઓનો હાજરી અને પગાર ઇતિહાસ" : "Month-by-Month History"}
+            {isGu ? "તમામ મહિનાઓનો હાજરી ઇતિહાસ" : "Month-by-Month Attendance History"}
           </p>
           <div className="rounded-2xl border overflow-hidden text-xs">
             <table className="w-full">
@@ -410,7 +251,7 @@ export function FacultyDetailsModal({
                   <th className="p-2 text-center">{isGu ? "હાજર" : "P"}</th>
                   <th className="p-2 text-center">{isGu ? "ગેરહાજર" : "A"}</th>
                   <th className="p-2">{isGu ? "ગેરહાજર તારીખો" : "Absent Dates"}</th>
-                  <th className="p-2.5 pr-3 text-right">{isGu ? "પગાર" : "Salary"}</th>
+                  <th className="p-2.5 pr-3 text-right">{isGu ? "હાજરી ટકાવારી" : "Rate"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -439,7 +280,7 @@ export function FacultyDetailsModal({
                         : "None"}
                     </td>
                     <td className="p-2.5 pr-3 text-right font-black text-primary">
-                      {rupee(m.calculatedSalary)}
+                      {m.pct !== null ? `${m.pct}%` : "—"}
                     </td>
                   </tr>
                 ))}
